@@ -166,6 +166,43 @@ private:
     }
 
 public:
+    hash_t toHash() /*nothrow pure*/ const @trusted
+    {
+        // AA hashes must:
+        // (1) depend solely on key/value pairs stored in it, regardless of the
+        //     size of the hashtable and/or any other implementation-specific
+        //     states;
+        // (2) be independent of the order of key/value pairs.
+        //
+        // So we compute a hash value for each key/value pair by combining
+        // their respective hash values, and use a commutative operation
+        // (addition) to combine these hash values into an overall hash for the
+        // entire AA.
+        hash_t h = 0;
+        if (!impl)
+            return h;
+
+        foreach (const(Slot)* s; impl.slots)
+        {
+            while (s)
+            {
+                // NOTE: use a non-commutative operation (hashOf) to combine
+                // the key and value hashes to minimize collisions when dealing
+                // with things like int[int].
+                import rt.util.hash;
+
+                hash_t[2] pairhash;
+                pairhash[0] = s.hash;
+                pairhash[1] = typeid(Value).getHash(&s.value);
+
+                h += hashOf(pairhash.ptr, pairhash.length * hash_t.sizeof);
+
+                s = s.next;
+            }
+        }
+        return h;
+    }
+
     @property size_t length() nothrow pure const @safe { return impl.nodes; }
 
     Value get(K)(in K key, lazy Value defaultValue) /*pure nothrow*/ const @safe
@@ -647,6 +684,24 @@ unittest {
     assert((key1 in aa) !is null);
     assert((key2 in aa) is null);
     assert((key3 in aa) !is null);
+}
+
+// Test .toHash
+unittest {
+    AA!(int,int) aa1, aa2, aa3;
+
+    aa1[1] = 2;
+    aa1[2] = 1;
+
+    aa2[1] = 1;
+    aa2[2] = 2;
+
+    aa3[2] = 1;
+    aa3[1] = 2;
+    aa3.rehash;     // make aa3 binary-different from aa1
+
+    assert(aa1.toHash() != aa2.toHash());
+    assert(aa1.toHash() == aa3.toHash());
 }
 
 // issues 7512 & 7704
