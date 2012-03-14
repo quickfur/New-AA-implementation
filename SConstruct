@@ -24,6 +24,6 @@ env = Environment(
 	DMD_FLAGS=dmd_flags
 )
 
-env.Command('newAAtest', ['newAA.d', 'newAATest.d'],
+env.Command('newAATest', ['newAA.d', 'newAATest.d'],
 	"$DMD $DMD_FLAGS $SOURCES -of$TARGET"
 )

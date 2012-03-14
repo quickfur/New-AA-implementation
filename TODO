@@ -4,3 +4,10 @@
   that implicit convert to Key, not just Key itself.
    - Also, .opIndexAssign needs to be clever enough to NOT copy the input key
      unless it needs to create a new entry.
+   - For this, we need to ensure that the input key type is: (1) comparable
+     to Key, and (2) implicitly convertible to Key.
+      - Andrei's request, however, goes even further: we should invoke .idup on
+        the input key if it's not immutable but has an .idup method that
+        returns immutable. This way, we can lookup X[string] with char[], for
+        example, or even add char[] keys to the hash and have it automatically
+        convert to immutable.
