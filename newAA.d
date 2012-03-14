@@ -10,6 +10,13 @@ version(AAdebug) {
 import core.exception;
 import core.memory;
 
+// This is a temporary syntactic sugar hack until we manage to get dmd to
+// work with us nicely.
+version(unittest)
+{
+    alias AssociativeArray AA;
+}
+
 struct AssociativeArray(Key,Value)
 {
 private:
@@ -37,6 +44,7 @@ private:
         Slot*[4] binit;
     }
 
+    // Range interface
     struct Range
     {
         Slot*[] slots;
@@ -111,7 +119,8 @@ private:
         return slots;
     }
 
-    inout(Slot) *findSlot(in Key key) inout /*pure nothrow*/ @trusted {
+    inout(Slot) *findSlot(in Key key) inout /*pure nothrow*/ @trusted
+    {
         if (!impl)
             return null;
 
@@ -386,6 +395,149 @@ public:
 
         return ValueRange(impl);
     }
+}
+
+// Test reference semantics
+unittest {
+    AA!(string,int) aa, bb;
+    aa["abc"] = 123;
+    bb = aa;
+    assert(aa.impl is bb.impl);
+
+    aa["def"] = 456;
+    assert(bb["def"] == 456);
+
+    // TBD: should the case where aa is empty when it is assigned to bb work as
+    // well?
+}
+
+unittest {
+    AA!(dstring,int) aa;
+    aa["mykey"d] = 10;
+
+    assert(aa.get("mykey"d, 99) == 10);
+    assert(aa.get("yourkey"d, 99) == 99);
+}
+
+unittest {
+    AA!(wstring,bool) aa;
+    aa["abc"w] = true;
+    aa["def"w] = false;
+
+    assert(("abc"w in aa) !is null);
+    assert(("xyz"w in aa) is null);
+}
+
+unittest {
+    AA!(char,char) aa;
+    aa['x'] = 'y';
+    aa['y'] = 'z';
+    assert(aa[aa['x']] == 'z');
+}
+
+unittest {
+    AA!(int,int) aa;
+    aa[10] = 5;
+    aa[20] = 17;
+    aa[30] = 39;
+
+    int valsum = 0;
+    foreach (v; aa) {
+        valsum += v;
+    }
+    assert(valsum == 5+17+39);
+
+    int keysum = 0;
+    valsum = 0;
+    foreach (k,v; aa) {
+        keysum += k;
+        valsum += v;
+    }
+    assert(keysum == 10+20+30);
+    assert(valsum == 5+17+39);
+}
+
+unittest {
+    immutable int[] key1 = [1,2,3];
+    immutable int[] key2 = [4,5,6];
+    immutable int[] key3 = [1,3,5];
+    AA!(immutable int[], char) aa, bb;
+    aa[key1] = '1';
+    aa[key2] = '2';
+    aa[key3] = '3';
+    bb[key3] = '3';
+    bb[key2] = '2';
+    bb[key1] = '1';
+
+    assert(aa==bb);
+
+    // .rehash should not invalidate equality
+    bb.rehash;
+    assert(aa==bb);
+    assert(bb==aa);
+}
+
+unittest {
+    AA!(char,int) aa;
+    aa['a'] = 1;
+    aa['b'] = 2;
+    aa['c'] = 3;
+
+    assert(aa.keys.sort == ['a', 'b', 'c']);
+    assert(aa.values.sort == [1,2,3]);
+}
+
+unittest {
+    AA!(int,int) aa;
+    foreach (i; 0 .. 99) {
+        aa[i*10] = i^^2;
+    }
+    aa.rehash;
+    foreach (i; 0 .. 99) {
+        assert(aa[i*10] == i^^2);
+    }
+}
+
+unittest {
+    AA!(int,string) aa;
+    aa[100] = "a";
+    aa[200] = "aa";
+    aa[300] = "aaa";
+    int sum = 0;
+    foreach (k; aa.byKey) {
+        sum += k;
+    }
+    assert(sum == 600);
+
+    string x;
+    foreach(v; aa.byValue) {
+        x ~= v;
+    }
+    assert(x == "aaaaaa");
+}
+
+// issues 7512 & 7704
+unittest {
+    AA!(dstring,int) aa;
+    aa["abc"] = 123;
+    aa["def"] = 456;
+    aa["ghi"] = 789;
+
+    foreach (k, v; aa) {
+        assert(aa[k] == v);
+    }
+}
+
+// issue 7632
+unittest {
+    AA!(int,int) aa;
+    foreach (idx; 0 .. 10) {
+        aa[idx] = idx*2;
+    }
+
+    int[] z;
+    foreach(v; aa.byValue) z ~= v;
+    assert(z.sort == aa.values.sort);
 }
 
 version(AAdebug) {
