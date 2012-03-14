@@ -3,6 +3,7 @@
 
 version=AAdebug;
 version(AAdebug) {
+    import std.conv;
     import std.stdio;
 }
 
@@ -186,7 +187,7 @@ public:
         return 0;
     }
 
-    @safe pure bool opEquals(in typeof(this) that) inout
+    @safe pure bool opEquals(inout typeof(this) that) inout
     {
         if (impl is that.impl)
             return true;
@@ -201,9 +202,19 @@ public:
         {
             while (slot)
             {
-                auto s = that.impl.slots[slot.hash % that.impl.nodes];
-                if (!s || slot.key != s.key || slot.value != s.value)
-                    return false;
+                inout(Slot)* s = that.impl.slots[slot.hash % that.impl.slots.length];
+
+                // To be equal, it is enough for one of the target slots to
+                // match the current entry.
+                while (s)
+                {
+                    if (slot.key == s.key && slot.value == s.value)
+                        break;
+                    s = s.next;
+                }
+
+                // No match found at all; give up.
+                if (!s) return false;
 
                 slot = slot.next;
             }
@@ -295,5 +306,23 @@ public:
     }
 }
 
-unittest {
+version(AAdebug) {
+    void __rawAAdump(K,V)(AssociativeArray!(K,V) aa)
+    {
+        writefln("Hash at %x (%d entries):",
+                 aa.impl, aa.impl is null ? -1: aa.impl.nodes);
+        if (aa.impl !is null) {
+            foreach(slot; aa.impl.slots) {
+                while (slot) {
+                    writefln("\tSlot %x:", cast(void*)slot);
+                    writefln("\t\tHash:  %x", slot.hash);
+                    writeln("\t\tKey:   ", slot.key);
+                    writeln("\t\tValue: ", slot.value);
+
+                    slot = slot.next;
+                }
+            }
+        }
+        writeln("End");
+    }
 }

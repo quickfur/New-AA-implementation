@@ -69,6 +69,8 @@ void test2() {
 	aa2[key2] = "def";
 	aa2[key1] = "abc";
 
+	assert(aa2[key1] == "abc");
+
 	assert(aa1==aa2);
 }
 

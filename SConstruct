@@ -1,6 +1,7 @@
 #!/usr/bin/scons
 
 debug = ARGUMENTS.get('debug', 0)
+unittest = ARGUMENTS.get('unittest', 1)
 
 dbase = '/usr/src/d'
 dmd = dbase + '/dmd/src/dmd'
@@ -14,6 +15,9 @@ dflags = '-I'+dbase+'/druntime/src'
 dflags = dflags + ' -L'+dbase+'/druntime/lib'
 if debug:
 	dflags = dflags + ' -g3'
+if unittest:
+	dflags = dflags + ' -funittest'
+	dmd_flags = dmd_flags + ' -unittest'
 
 env = Environment(
 	DMD=dmd,
