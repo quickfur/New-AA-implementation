@@ -203,7 +203,10 @@ public:
         return h;
     }
 
-    @property size_t length() nothrow pure const @safe { return impl.nodes; }
+    @property size_t length() nothrow pure const @safe
+    {
+        return impl ? impl.nodes : 0;
+    }
 
     Value get(K)(in K key, lazy Value defaultValue) /*pure nothrow*/ const @safe
         if (keyComparable!K)
@@ -286,6 +289,7 @@ public:
         if (slot.hash == keyhash && slot.key == key)
         {
             impl.slots[i] = slot.next;
+            impl.nodes--;
             return true;
         }
 
@@ -294,6 +298,7 @@ public:
             if (slot.next.hash == keyhash && slot.next.key == key)
             {
                 slot.next = slot.next.next;
+                impl.nodes--;
                 return true;
             }
             slot = slot.next;
@@ -526,6 +531,22 @@ unittest {
 
     // TBD: should the case where aa is empty when it is assigned to bb work as
     // well?
+}
+
+// Check consistency with specs
+unittest {
+    AA!(string,int) aa;
+    assert(aa.sizeof==4 || aa.sizeof==8);
+    assert(aa.length==0);
+
+    aa["abc"] = 10;
+    assert(aa.length==1);
+    aa["def"] = 20;
+    assert(aa.length==2);
+    aa["ghi"] = 30;
+    assert(aa.length==3);
+    aa.remove("def");
+    assert(aa.length==2);
 }
 
 // Test .get

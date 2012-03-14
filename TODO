@@ -1,4 +1,3 @@
-- Implement .toHash
 - Key should be implicitly immutable?
 - Investigate how to make signature constraints work so that compiler magic
   with wstring/dstring literals will still work properly.
@@ -15,3 +14,4 @@
         convert to immutable.
 + Implement .remove
    P Possible to make it safe inside opApply? (Probably not.)
++ Implement .toHash
