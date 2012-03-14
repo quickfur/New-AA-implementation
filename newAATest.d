@@ -71,6 +71,8 @@ void test2() {
 
 	assert(aa2[key1] == "abc");
 
+	aa2.rehash;
+
 	assert(aa1==aa2);
 }
 
