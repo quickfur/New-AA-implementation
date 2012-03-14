@@ -521,7 +521,7 @@ unittest {
     AA!(int,string) aa;
     aa[100] = "a";
     aa[200] = "aa";
-    aa[300] = "aaa";
+    aa[300] = "aaaa";
     int sum = 0;
     foreach (k; aa.byKey) {
         sum += k;
@@ -532,7 +532,7 @@ unittest {
     foreach(v; aa.byValue) {
         x ~= v;
     }
-    assert(x == "aaaaaa");
+    assert(x == "aaaaaaa");
 }
 
 // issues 7512 & 7704
