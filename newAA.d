@@ -41,12 +41,57 @@ private:
     {
         Slot*[] slots;
         Slot* curslot;
+
+        this(Impl *i) pure nothrow @safe
+        {
+            if (i !is null)
+            {
+                slots = i.slots;
+                nextSlot();
+            }
+        }
+
+        void nextSlot() pure nothrow @safe
+        {
+            while (slots.length > 0)
+            {
+                if (slots[0] !is null)
+                {
+                    curslot = slots[0];
+                    break;
+                }
+                slots = slots[1..$];
+            }
+        }
+
+        @property bool empty() pure const nothrow @safe
+        {
+            return curslot is null;
+        }
+
+        @property ref inout(Slot) front() inout pure const nothrow @safe
+        {
+            assert(curslot);
+            return *curslot;
+        }
+
+        void popFront() pure @safe nothrow
+        {
+            assert(curslot);
+            curslot = curslot.next;
+            if (curslot is null)
+            {
+                slots = slots[1..$];
+                nextSlot();
+            }
+        }
     }
 
     // Reference semantics
     Impl *impl;
 
     // Preset prime hash sizes for auto-rehashing.
+    // FIXME: this shouldn't be duplicated for every template instance.
     static immutable size_t[] prime_list = [
                    31UL,
                    97UL,            389UL,
@@ -59,14 +104,14 @@ private:
     //  8_589_934_513UL, 17_179_869_143UL
     ];
 
-    static @trusted Slot*[] alloc(size_t len)
+    static Slot*[] alloc(size_t len) @trusted
     {
         auto slots = new Slot*[len];
         GC.setAttr(&slots, GC.BlkAttr.NO_INTERIOR);
         return slots;
     }
 
-    @trusted inout(Slot) *findSlot(in Key key) inout {
+    inout(Slot) *findSlot(in Key key) inout /*pure nothrow*/ @trusted {
         if (!impl)
             return null;
 
@@ -84,22 +129,23 @@ private:
     }
 
 public:
-    @safe @property pure size_t length() const { return impl.nodes; }
+    @property size_t length() nothrow pure const @safe { return impl.nodes; }
 
-    @safe /*pure*/ Value get(in Key key, lazy Value defaultValue) const
+    Value get(in Key key, lazy Value defaultValue) /*pure nothrow*/ const @safe
     {
         auto s = findSlot(key);
         return (s is null) ? defaultValue : s.value;
     }
 
-    @trusted Value *opBinaryRight(string op)(in Key key) if (op=="in")
+    Value *opBinaryRight(string op)(in Key key) /*pure*/ @trusted
+        if (op=="in")
     {
         auto slot = findSlot(key);
         return (slot) ? &slot.value : null;
     }
 
-    @safe /*pure*/ Value opIndex(in Key key,
-                                 string file=__FILE__, size_t line=__LINE__)
+    Value opIndex(in Key key, string file=__FILE__, size_t line=__LINE__)
+        @safe /*pure*/
     {
         Value *valp = opBinaryRight!"in"(key);
         if (valp is null)
@@ -108,8 +154,8 @@ public:
         return *valp;
     }
 
-    // Why isn't getHash() pure?!
-    /*pure*/ void opIndexAssign(in Value value, in Key key)
+    void opIndexAssign(in Value value, in Key key) @trusted /*pure nothrow*/
+        // Why isn't getHash() pure?!
     {
         if (!impl)
         {
@@ -187,7 +233,7 @@ public:
         return 0;
     }
 
-    @safe pure bool opEquals(inout typeof(this) that) inout
+    bool opEquals(inout typeof(this) that) inout nothrow pure @safe
     {
         if (impl is that.impl)
             return true;
@@ -222,7 +268,7 @@ public:
         return true;
     }
 
-    @property inout(Key)[] keys() inout
+    @property inout(Key)[] keys() inout @trusted
     {
         inout(Key)[] k;
         if (impl !is null)
@@ -241,7 +287,7 @@ public:
         return k;
     }
 
-    @property inout(Value)[] values() inout
+    @property inout(Value)[] values() inout @trusted
     {
         inout(Value)[] v;
         if (impl !is null)
@@ -260,7 +306,7 @@ public:
         return v;
     }
 
-    @safe @property typeof(this) rehash()
+    @property typeof(this) rehash() @safe
     {
         size_t i;
         for (i=0; i < prime_list.length; i++)
@@ -297,12 +343,48 @@ public:
         return this;
     }
 
-    @property pure const auto byKey()
+    @property auto byKey() pure nothrow @safe
     {
+        static struct KeyRange
+        {
+            Range state;
+
+            this(Impl *p) pure nothrow @safe
+            {
+                state = Range(p);
+            }
+
+            @property ref Key front() pure nothrow @safe
+            {
+                return state.front.key;
+            }
+
+            alias state this;
+        }
+
+        return KeyRange(impl);
     }
 
-    @property pure const auto byValue()
+    @property auto byValue() pure nothrow @safe
     {
+        static struct ValueRange
+        {
+            Range state;
+
+            this(Impl *p) pure nothrow @safe
+            {
+                state = Range(p);
+            }
+
+            @property ref Value front() pure nothrow @safe
+            {
+                return state.front.value;
+            }
+
+            alias state this;
+        }
+
+        return ValueRange(impl);
     }
 }
 

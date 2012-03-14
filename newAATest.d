@@ -76,7 +76,25 @@ void test2() {
 	assert(aa1==aa2);
 }
 
+void test3() {
+	AA!(string,string) aa;
+	aa["Hello"] = "Привет";
+	aa["Goodbye"] = "Пока";
+	aa["Thanks"] = "Спасибо";
+
+	foreach (k; aa.byKey) {
+		writeln(k);
+	}
+
+	foreach (v; aa.byValue) {
+		writeln(v);
+	}
+
+	dump(aa);
+}
+
 void main() {
-	//test1();
+	test1();
 	test2();
+	test3();
 }
