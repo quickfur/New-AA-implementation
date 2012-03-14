@@ -352,6 +352,25 @@ public:
         return this;
     }
 
+    @property typeof(this) dup() /*nothrow pure*/ @safe
+    {
+        typeof(this) result;
+        if (impl !is null)
+        {
+            foreach (slot; impl.slots)
+            {
+                while (slot)
+                {
+                    // FIXME: should avoid recomputing key hashes.
+                    // FIXME: maybe do shallow copy if value type is immutable?
+                    result[slot.key] = slot.value;
+                    slot = slot.next;
+                }
+            }
+        }
+        return result;
+    }
+
     @property auto byKey() pure nothrow @safe
     {
         static struct KeyRange
@@ -538,6 +557,23 @@ unittest {
     int[] z;
     foreach(v; aa.byValue) z ~= v;
     assert(z.sort == aa.values.sort);
+}
+
+// issue 6210
+unittest {
+    AA!(string,int) aa;
+    aa["h"] = 1;
+    assert(aa == aa.dup);
+}
+
+// issue 5685
+unittest {
+    int[2] foo = [1,2];
+    AA!(int[2],string) aa;
+    aa[foo] = "";
+    assert(foo in aa);
+    //FIXME: this needs to work
+    //assert([1,2] in aa);
 }
 
 version(AAdebug) {
