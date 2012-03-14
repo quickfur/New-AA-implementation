@@ -235,6 +235,36 @@ public:
         }
     }
 
+    bool remove(K)(in K key) /*pure nothrow*/ @trusted
+        if (keyCompat!K)
+    {
+        if (!impl) return false;
+
+        auto keyhash = typeid(key).getHash(&key);
+        size_t i = keyhash % impl.slots.length;
+        auto slot = impl.slots[i];
+        if (!slot)
+            return false;
+
+        if (slot.hash == keyhash && slot.key == key)
+        {
+            impl.slots[i] = slot.next;
+            return true;
+        }
+
+        while (slot.next)
+        {
+            if (slot.next.hash == keyhash && slot.next.key == key)
+            {
+                slot.next = slot.next.next;
+                return true;
+            }
+            slot = slot.next;
+        }
+
+        return false;
+    }
+
     int opApply(scope int delegate(ref Value) dg)
     {
         if (impl is null)
@@ -588,6 +618,35 @@ unittest {
     assert(*(key in aa) == 123);
     assert(*(key2 in aa) == 123);
     assert(aa.get(key2, 999) == 123);
+}
+
+// Test .remove
+unittest {
+    const int[] key1 = [1,2,3];
+    const int[] key2 = [2,3,1];
+    const int[] key3 = [3,1,2];
+    const int[] key4 = [1,3,2];
+
+    AA!(const int[],string) aa;
+    aa[key1] = "abc";
+    aa[key2] = "def";
+    aa[key3] = "ghi";
+
+    assert((key1 in aa) !is null);
+    assert((key2 in aa) !is null);
+    assert((key3 in aa) !is null);
+
+    assert(aa.remove(key2));
+
+    assert((key1 in aa) !is null);
+    assert((key2 in aa) is null);
+    assert((key3 in aa) !is null);
+
+    assert(!aa.remove(key4));
+
+    assert((key1 in aa) !is null);
+    assert((key2 in aa) is null);
+    assert((key3 in aa) !is null);
 }
 
 // issues 7512 & 7704

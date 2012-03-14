@@ -1,5 +1,3 @@
-- Implement .remove
-   - Possible to make it safe inside opApply? (Probably not.)
 - Implement .toHash
 - Key should be implicitly immutable?
 - Investigate how to make signature constraints work so that compiler magic
@@ -15,3 +13,5 @@
         returns immutable. This way, we can lookup X[string] with char[], for
         example, or even add char[] keys to the hash and have it automatically
         convert to immutable.
++ Implement .remove
+   P Possible to make it safe inside opApply? (Probably not.)
