@@ -20,6 +20,25 @@ version(unittest)
 struct AssociativeArray(Key,Value)
 {
 private:
+    // Convenience template to check if a given type can be compared with Key
+    // using ==.
+	template keyComparable(L) {
+		enum bool keyComparable = is(typeof(Key.init==L.init) == bool);
+	}
+
+    // Convenience templates to check if a given type can be either implicitly
+    // converted to Key, or can be converted via .idup. This is for supporting
+    // assigning char[] keys to X[string], for example.
+    template keyIdupCompat(L) {
+        static if (__traits(compiles, L.init.idup))
+            enum keyIdupCompat = is(typeof(L.init.idup) : Key);
+        else
+            enum keyIdupCompat = false;
+    }
+    template keyCompat(L) {
+        enum bool keyCompat = is(L : Key) || keyIdupCompat!L;
+    }
+
     struct Slot
     {
         Slot   *next;
@@ -27,10 +46,18 @@ private:
         Key     key;
         Value   value;
 
-        this(hash_t h, Key k, Value v)
+        // This ctor accepts any key type that can either be implicitly
+        // converted to Key, or has an .idup method that returns a type
+        // implicitly convertible to Key.
+        this(K)(hash_t h, K k, Value v) if (keyCompat!K)
         {
             hash = h;
-            key = k;
+
+            static if (is(K : Key))
+                key = k;
+            else static if (keyIdupCompat!K)
+                key = k.idup;
+
             value = v;
         }
     }
@@ -119,7 +146,8 @@ private:
         return slots;
     }
 
-    inout(Slot) *findSlot(in Key key) inout /*pure nothrow*/ @trusted
+    inout(Slot) *findSlot(K)(in K key) inout /*pure nothrow*/ @trusted
+        if (keyComparable!K)
     {
         if (!impl)
             return null;
@@ -140,21 +168,23 @@ private:
 public:
     @property size_t length() nothrow pure const @safe { return impl.nodes; }
 
-    Value get(in Key key, lazy Value defaultValue) /*pure nothrow*/ const @safe
+    Value get(K)(in K key, lazy Value defaultValue) /*pure nothrow*/ const @safe
+        if (keyComparable!K)
     {
         auto s = findSlot(key);
         return (s is null) ? defaultValue : s.value;
     }
 
-    Value *opBinaryRight(string op)(in Key key) /*pure*/ @trusted
-        if (op=="in")
+    Value *opBinaryRight(string op, K)(in K key) /*pure*/ @trusted
+        if (op=="in" && keyComparable!K)
     {
         auto slot = findSlot(key);
         return (slot) ? &slot.value : null;
     }
 
-    Value opIndex(in Key key, string file=__FILE__, size_t line=__LINE__)
+    Value opIndex(K)(in K key, string file=__FILE__, size_t line=__LINE__)
         @safe /*pure*/
+        if (keyComparable!K)
     {
         Value *valp = opBinaryRight!"in"(key);
         if (valp is null)
@@ -163,8 +193,9 @@ public:
         return *valp;
     }
 
-    void opIndexAssign(in Value value, in Key key) @trusted /*pure nothrow*/
+    void opIndexAssign(K)(in Value value, in K key) @trusted /*pure nothrow*/
         // Why isn't getHash() pure?!
+        if (keyCompat!K)
     {
         if (!impl)
         {
@@ -543,12 +574,24 @@ unittest {
     assert(x == "aaaaaaa");
 }
 
+// Test implicit conversion (feature requested by Andrei)
+unittest {
+    AA!(wstring,int) aa;
+    wchar[] key = "abc"w.dup;
+    aa[key] = 123;
+
+    assert(aa["abc"w] == 123);
+
+    const wchar[] key2 = "abc"w.dup;
+    assert(aa[key2] is aa["abc"w]);
+}
+
 // issues 7512 & 7704
 unittest {
     AA!(dstring,int) aa;
-    aa["abc"] = 123;
-    aa["def"] = 456;
-    aa["ghi"] = 789;
+    aa["abc"d] = 123;
+    aa["def"d] = 456;
+    aa["ghi"d] = 789;
 
     foreach (k, v; aa) {
         assert(aa[k] == v);

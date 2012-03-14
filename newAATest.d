@@ -93,8 +93,87 @@ void test3() {
 	dump(aa);
 }
 
+struct S(K) {
+	K key;
+
+	template keyComparable(L) {
+		enum bool keyComparable = is(typeof(key==L.init) == bool);
+	}
+
+	template keyDupCompat(L) {
+		static if (__traits(compiles, L.init.dup))
+			enum keyDupCompat = is(typeof(L.init.dup) : K);
+		else
+			enum keyDupCompat = false;
+	}
+
+	template keyIdupCompat(L) {
+		static if (__traits(compiles, L.init.idup))
+			enum keyIdupCompat = is(typeof(L.init.idup) : K);
+		else
+			enum keyIdupCompat = false;
+	}
+
+	template keyAssignable(L) {
+		enum bool keyAssignable = is(L : K) || keyDupCompat!L ||
+					keyIdupCompat!L;
+	}
+
+	bool equal(L)(L l) if (keyComparable!L)
+	{
+		return (key == l);
+	}
+
+	void set(L)(L l) if (keyAssignable!L)
+	{
+		static if (is(L : K)) {
+			key = l;
+		} else static if (keyDupCompat!L) {
+			key = l.dup;
+		} else static if (keyIdupCompat!L) {
+			key = l.idup;
+		}
+	}
+}
+
+unittest {
+	S!long s;
+	ubyte b = 123;
+	s.set(b);
+	assert(s.equal(123UL));
+}
+
+unittest {
+	S!dstring s;
+	dchar[] t = "abc"d.dup;
+	s.set(t);
+	const(dchar)[] u = "abc"d;
+	assert(s.equal(u));
+}
+
+void test4() {
+	{
+		auto s = S!string("abc");
+		char[] t = "abc".dup;
+		assert(s.equal(t));
+
+		//int i = 123;
+		//assert(s.equal(i));
+	}
+	{
+		auto s = S!(char[])("abc".dup);
+		string t = "abc";
+		assert(s.equal(t));
+
+		//s.set(123);
+		s.set("def");
+		assert(s.equal("def"));
+	}
+}
+
 void main() {
-	test1();
-	test2();
-	test3();
+	//test1();
+	//test2();
+	//test3();
+	//test4();
 }

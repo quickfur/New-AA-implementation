@@ -1,5 +1,6 @@
 - Implement .remove
    - Possible to make it safe inside opApply? (Probably not.)
+- Implement .toHash
 - IMPORTANT: .get, .opIndex, and .opBinaryRight!"in" need to accept key types
   that implicit convert to Key, not just Key itself.
    - Also, .opIndexAssign needs to be clever enough to NOT copy the input key
@@ -11,3 +12,4 @@
         returns immutable. This way, we can lookup X[string] with char[], for
         example, or even add char[] keys to the hash and have it automatically
         convert to immutable.
+- Key should be implicitly immutable?
