@@ -36,7 +36,7 @@ private:
             enum keyIdupCompat = false;
     }
     template keyCompat(L) {
-        enum bool keyCompat = is(L : Key) || keyIdupCompat!L;
+        enum bool keyCompat = keyComparable!L && (is(L : Key) || keyIdupCompat!L);
     }
 
     struct Slot

@@ -2,6 +2,8 @@
    - Possible to make it safe inside opApply? (Probably not.)
 - Implement .toHash
 - Key should be implicitly immutable?
+- Investigate how to make signature constraints work so that compiler magic
+  with wstring/dstring literals will still work properly.
 + IMPORTANT: .get, .opIndex, and .opBinaryRight!"in" need to accept key types
   that implicit convert to Key, not just Key itself.
    + Also, .opIndexAssign needs to be clever enough to NOT copy the input key
