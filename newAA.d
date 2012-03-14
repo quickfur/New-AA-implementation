@@ -430,6 +430,7 @@ unittest {
     // well?
 }
 
+// Test .get
 unittest {
     AA!(dstring,int) aa;
     aa["mykey"d] = 10;
@@ -438,6 +439,7 @@ unittest {
     assert(aa.get("yourkey"d, 99) == 99);
 }
 
+// Test opBinaryRight!"in"
 unittest {
     AA!(wstring,bool) aa;
     aa["abc"w] = true;
@@ -447,6 +449,7 @@ unittest {
     assert(("xyz"w in aa) is null);
 }
 
+// Test opIndexAssign and opIndex
 unittest {
     AA!(char,char) aa;
     aa['x'] = 'y';
@@ -454,6 +457,7 @@ unittest {
     assert(aa[aa['x']] == 'z');
 }
 
+// Test opApply.
 unittest {
     AA!(int,int) aa;
     aa[10] = 5;
@@ -476,6 +480,7 @@ unittest {
     assert(valsum == 5+17+39);
 }
 
+// Test opEquals and rehash
 unittest {
     immutable int[] key1 = [1,2,3];
     immutable int[] key2 = [4,5,6];
@@ -496,6 +501,7 @@ unittest {
     assert(bb==aa);
 }
 
+// Test .keys and .values
 unittest {
     AA!(char,int) aa;
     aa['a'] = 1;
@@ -506,6 +512,7 @@ unittest {
     assert(aa.values.sort == [1,2,3]);
 }
 
+// Test .rehash
 unittest {
     AA!(int,int) aa;
     foreach (i; 0 .. 99) {
@@ -517,6 +524,7 @@ unittest {
     }
 }
 
+// Test .byKey and .byValue
 unittest {
     AA!(int,string) aa;
     aa[100] = "a";
@@ -576,6 +584,8 @@ unittest {
     //assert([1,2] in aa);
 }
 
+// For development only. (Should this be made available for druntime
+// debugging?)
 version(AAdebug) {
     void __rawAAdump(K,V)(AssociativeArray!(K,V) aa)
     {
