@@ -1,0 +1,6 @@
+- Implement .remove
+   - Possible to make it safe inside opApply? (Probably not.)
+- IMPORTANT: .get, .opIndex, and .opBinaryRight!"in" need to accept key types
+  that implicit convert to Key, not just Key itself.
+   - Also, .opIndexAssign needs to be clever enough to NOT copy the input key
+     unless it needs to create a new entry.
