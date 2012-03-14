@@ -582,8 +582,12 @@ unittest {
 
     assert(aa["abc"w] == 123);
 
-    const wchar[] key2 = "abc"w.dup;
+    const wchar[] key2 = "abc"w;
     assert(aa[key2] is aa["abc"w]);
+
+    assert(*(key in aa) == 123);
+    assert(*(key2 in aa) == 123);
+    assert(aa.get(key2, 999) == 123);
 }
 
 // issues 7512 & 7704
