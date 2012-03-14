@@ -702,9 +702,18 @@ unittest {
 
     assert(aa1.toHash() != aa2.toHash());
     assert(aa1.toHash() == aa3.toHash());
+
+    // Issue 3824
+    AA!(const AA!(int,int), string) meta;
+    meta[aa1] = "abc";
+    assert(meta[aa3] == "abc");
+
+    meta[aa2] = "def";
+    assert(meta[aa1] == "abc"); // ensure no overwrite
+    assert(meta[aa2] == "def");
 }
 
-// issues 7512 & 7704
+// Issues 7512 & 7704
 unittest {
     AA!(dstring,int) aa;
     aa["abc"d] = 123;
@@ -716,7 +725,7 @@ unittest {
     }
 }
 
-// issue 7632
+// Issue 7632
 unittest {
     AA!(int,int) aa;
     foreach (idx; 0 .. 10) {
@@ -728,14 +737,14 @@ unittest {
     assert(z.sort == aa.values.sort);
 }
 
-// issue 6210
+// Issue 6210
 unittest {
     AA!(string,int) aa;
     aa["h"] = 1;
     assert(aa == aa.dup);
 }
 
-// issue 5685
+// Issue 5685
 unittest {
     int[2] foo = [1,2];
     AA!(int[2],string) aa;
