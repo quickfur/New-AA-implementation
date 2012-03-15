@@ -732,6 +732,8 @@ unittest {
     meta[aa2] = "def";
     assert(meta[aa1] == "abc"); // ensure no overwrite
     assert(meta[aa2] == "def");
+
+    assert(meta.dup == meta);
 }
 
 // Issues 7512 & 7704
