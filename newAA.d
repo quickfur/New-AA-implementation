@@ -49,8 +49,9 @@ private:
         // This ctor accepts any key type that can either be implicitly
         // converted to Key, or has an .idup method that returns a type
         // implicitly convertible to Key.
-        this(K)(hash_t h, K k, Value v) if (keyCompat!K)
+        this(K)(hash_t h, K k, Value v, Slot *_next=null) if (keyCompat!K)
         {
+            next = _next;
             hash = h;
 
             static if (is(K : Key))
@@ -477,18 +478,26 @@ public:
         return this;
     }
 
-    @property typeof(this) dup() /*nothrow pure*/ @safe
+    @property auto dup() const /*nothrow pure*/ @safe
     {
-        typeof(this) result;
+        AssociativeArray!(Key,Value) result;
         if (impl !is null)
         {
-            foreach (slot; impl.slots)
+            result.impl = new Impl();
+            result.impl.slots = alloc(findAllocSize(impl.nodes));
+
+            foreach (const(Slot)* slot; impl.slots)
             {
                 while (slot)
                 {
-                    // FIXME: should avoid recomputing key hashes.
+                    size_t i = slot.hash % result.impl.slots.length;
+                    Slot *s = result.impl.slots[i];
+
                     // FIXME: maybe do shallow copy if value type is immutable?
-                    result[slot.key] = slot.value;
+                    result.impl.slots[i] = new Slot(slot.hash, slot.key,
+                                                    slot.value,
+                                                    result.impl.slots[i]);
+                    result.impl.nodes++;
                     slot = slot.next;
                 }
             }
@@ -771,6 +780,15 @@ unittest {
     bb["ghi"] = 789;
 
     assert(aa==bb);
+}
+
+// Test .dup with a large AA
+unittest {
+    AA!(int,short) aa;
+    foreach (short i; 0..100)
+        aa[i*100] = i;
+
+    assert(aa.dup == aa);
 }
 
 // Issues 7512 & 7704

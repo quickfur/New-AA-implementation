@@ -1,3 +1,4 @@
+- Value types in opIndexAssign need to allow implicit conversions too!
 - Introduce toHash methods for all native types (via UFCS). This will solve the
   stupid purity/nothrow idiocies with the current TypeInfo.getHash.
    * Note: beware of custom getHash() methods in the pre-built TypeInfo's;
