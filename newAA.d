@@ -139,6 +139,17 @@ private:
     //  8_589_934_513UL, 17_179_869_143UL
     ];
 
+    static size_t findAllocSize(size_t size) pure nothrow @safe
+    {
+        size_t i;
+        for (i=0; i < prime_list.length; i++)
+        {
+            if (size <= prime_list[i])
+                break;
+        }
+        return prime_list[i];
+    }
+
     static Slot*[] alloc(size_t len) @trusted
     {
         auto slots = new Slot*[len];
@@ -166,6 +177,21 @@ private:
     }
 
 public:
+    static typeof(this) fromLiteral(Key[] keys, Value[] values) @safe
+    in { assert(keys.length == values.length); }
+    body
+    {
+        typeof(this) aa;
+        aa.impl = new Impl();
+        aa.impl.slots = alloc(findAllocSize(keys.length));
+
+        foreach (i; 0 .. keys.length)
+        {
+            aa[keys[i]] = values[i];
+        }
+        return aa;
+    }
+
     hash_t toHash() /*nothrow pure*/ const @trusted
     {
         // AA hashes must:
@@ -420,13 +446,9 @@ public:
 
     @property typeof(this) rehash() @safe
     {
-        size_t i;
-        for (i=0; i < prime_list.length; i++)
-        {
-            if (impl.nodes <= prime_list[i])
-                break;
-        }
-        size_t newlen = prime_list[i];
+        if (impl is null) return this;
+
+        size_t newlen = findAllocSize(impl.nodes);
         Slot*[] newslots = alloc(newlen);
 
         foreach (slot; impl.slots)
@@ -734,6 +756,21 @@ unittest {
     assert(meta[aa2] == "def");
 
     assert(meta.dup == meta);
+}
+
+// Test AA literals API
+unittest {
+    auto aa = AA!(string,int).fromLiteral(
+        ["abc", "def", "ghi"],
+        [ 123,   456,   789 ]
+    );
+
+    AA!(string,int) bb;
+    bb["abc"] = 123;
+    bb["def"] = 456;
+    bb["ghi"] = 789;
+
+    assert(aa==bb);
 }
 
 // Issues 7512 & 7704
