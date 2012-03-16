@@ -848,15 +848,32 @@ hash_t toHash(T)(T[] s) nothrow pure @safe
     return hash;
 }
 
-unittest {
-    char[] x = "abc".dup;
-    assert(typeid(x).getHash(&x) == x.toHash());
+// Ensure consistency with current TypeInfo.getHash(). Turn off
+// checkToHashWithGetHash once we get rid of getHash() from TypeInfo.
+version=checkToHashWithGetHash;
+version(checkToHashWithGetHash)
+{
+    version(unittest)
+    {
+        import std.string;
 
-    const(char)[] y = "abc";
-    assert(typeid(y).getHash(&y) == y.toHash());
+        void verifyHash(string file=__FILE__, size_t line=__LINE__, T...)(T testvals)
+        {
+            foreach (testval; testvals)
+            {
+                assert(typeid(testval).getHash(&testval) == testval.toHash(),
+                       "toHash inconsistent with getHash in %s(%d)".format(file,line));
+            }
+        }
+    }
 
-    string z = "abc";
-    assert(typeid(z).getHash(&z) == z.toHash());
+    unittest {
+        char[] x = "abc".dup;
+        const(char)[] y = "abc";
+        string z = "abc";
+
+        verifyHash(x,y,z);
+    }
 }
 
 hash_t toHash(T)(in inout(T) c) nothrow pure @safe
@@ -866,11 +883,55 @@ hash_t toHash(T)(in inout(T) c) nothrow pure @safe
     return c;
 }
 
+version(checkToHashWithGetHash)
+{
+    unittest {
+        char x = 'a';
+        const char cx = 'b';
+        immutable char ix = 'c';
+
+        verifyHash(x, cx, ix);
+
+        int y = 123;
+        const int cy = 234;
+        immutable int iy = 345;
+
+        verifyHash(y, cy, iy);
+    }
+}
+
 hash_t toHash(T)(T[] s) nothrow pure @safe
     if (!is(T == char) && !is(T == immutable(char)))
+    // I've no idea why const(char)[] is treated differently from char[] and
+    // immutable(char)[], but that's the current behaviour of getHash.
 {
     // From TypeInfo_Array
     return hashOf(s.ptr, s.length * T.sizeof);
+}
+
+version(checkToHashWithGetHash)
+{
+    unittest {
+        // I've no idea why const(char)[] is treated differently from char[]
+        // and immutable(char)[], but that's the current behaviour.
+        const char[] s = "abc";
+        verifyHash(s);
+
+        void checkNumericArrays(T, U...)() {
+            T[] na = [1,2,3,4];
+            const(T)[] cna = [1,2,3,4];
+            immutable(T)[] ina = [1,2,3,4];
+
+            verifyHash(na, cna, ina);
+
+            // Buahaha template recursion
+            static if (U.length > 0)
+                checkNumericArrays!(U)();
+        }
+        checkNumericArrays!(byte, ubyte, short, ushort, int, uint, float,
+                            double, real)();
+        // Gotta love D variadic templates!!
+    }
 }
 
 
