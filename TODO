@@ -2,10 +2,6 @@
   stupid purity/nothrow idiocies with the current TypeInfo.getHash.
    * Note: beware of custom getHash() methods in the pre-built TypeInfo's;
      the toHash counterparts should return identical values.
-- Implement AA literals:
-   - We may not have compiler support for syntactic sugar ATM, but that
-     shouldn't stop us from implementing an interfacing function that can
-     construct AA's that the compiler can hook into in the future.
 - Implement compile-time instantiation of AA's:
    - Use CTFE to build the AA at compile-time, then transform it via mixins
      into static structs.
@@ -26,3 +22,7 @@
 + Implement .remove
    P Possible to make it safe inside opApply? (Probably not.)
 + Implement .toHash
++ Implement AA literals:
+   + We may not have compiler support for syntactic sugar ATM, but that
+     shouldn't stop us from implementing an interfacing function that can
+     construct AA's that the compiler can hook into in the future.
