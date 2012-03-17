@@ -260,7 +260,7 @@ public:
         return *valp;
     }
 
-    void opIndexAssign(K)(in Value value, in K key) @trusted /*pure nothrow*/
+    void opIndexAssign(K)(Value value, K key) @trusted /*pure nothrow*/
         // Why isn't getHash() pure?!
         if (keyCompat!K)
     {
@@ -789,6 +789,19 @@ unittest {
         aa[i*100] = i;
 
     assert(aa.dup == aa);
+}
+
+// Test non-const key type (by Andrei's request)
+unittest {
+    AA!(int,bool) aa;
+    aa[123] = true;
+    aa[321] = false;
+
+    const int i = 123;
+    assert(aa[i] == true);
+
+    immutable int j = 321;
+    assert(aa[j] == false);
 }
 
 // Issues 7512 & 7704

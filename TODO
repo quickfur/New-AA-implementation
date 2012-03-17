@@ -1,4 +1,5 @@
 - Value types in opIndexAssign need to allow implicit conversions too!
+- BUG: AA!(immutable char[4],int) can't be instantiated.
 - Introduce toHash methods for all native types (via UFCS). This will solve the
   stupid purity/nothrow idiocies with the current TypeInfo.getHash.
    * Note: beware of custom getHash() methods in the pre-built TypeInfo's;
@@ -9,6 +10,7 @@
 - Investigate how to make signature constraints work so that compiler magic
   with wstring/dstring literals will still work properly.
 - Key should be implicitly immutable?
+   + Support mutable key types for now.
 + IMPORTANT: .get, .opIndex, and .opBinaryRight!"in" need to accept key types
   that implicit convert to Key, not just Key itself.
    + Also, .opIndexAssign needs to be clever enough to NOT copy the input key
