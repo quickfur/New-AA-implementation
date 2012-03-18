@@ -37,8 +37,17 @@ private:
         else
             enum keyIdupCompat = false;
     }
+    template keySliceCompat(L) {
+        // Issue 7665: allow dynamic array assignment to static array keys.
+        static if (is(Key kbase : kbase[N], int N) && is(L lbase : lbase[]))
+            enum keySliceCompat = is(lbase : kbase);
+        else
+            enum keySliceCompat = false;
+    }
     template keyCompat(L) {
-        enum bool keyCompat = keyComparable!L && (is(L : Key) || keyIdupCompat!L);
+        enum bool keyCompat = keyComparable!L && (is(L : Key)
+                              || keyIdupCompat!L
+                              || keySliceCompat!L);
     }
 
     struct Slot
@@ -60,6 +69,14 @@ private:
                 key = k;
             else static if (keyIdupCompat!K)
                 key = k.idup;
+            else static if (keySliceCompat!K && is(Key b : b[N], int N))
+            {
+                assert(k.length==N, "Tried to set key with wrong size in "
+                                    "associative array with fixed-size key");
+                key = k[0..N];
+            }
+            else
+                static assert(false);
 
             value = v;
         }
@@ -261,7 +278,7 @@ public:
         return *valp;
     }
 
-    void opIndexAssign(K)(in Value value, in K key) @trusted
+    void opIndexAssign(K)(Value value, K key) @trusted
         // Note: can't be pure nothrow because we indirectly call alloc()
         if (keyCompat!K)
     {
@@ -792,6 +809,19 @@ unittest {
     assert(aa.dup == aa);
 }
 
+// Test non-const key type (by Andrei's request)
+unittest {
+    AA!(int,bool) aa;
+    aa[123] = true;
+    aa[321] = false;
+
+    const int i = 123;
+    assert(aa[i] == true);
+
+    immutable int j = 321;
+    assert(aa[j] == false);
+}
+
 // Issues 7512 & 7704
 unittest {
     AA!(dstring,int) aa;
@@ -821,6 +851,16 @@ unittest {
     AA!(string,int) aa;
     aa["h"] = 1;
     assert(aa == aa.dup);
+}
+
+// Issue 7665
+unittest {
+    char[] key1 = "abcd".dup;
+    AA!(char[4],int) aa;
+    aa[key1] = 123;
+
+    //__rawAAdump(aa);
+    //assert(aa["abcd"] == 123);
 }
 
 // Issue 5685
