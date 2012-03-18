@@ -1,0 +1,70 @@
+Returns binary value:
+
+./src/object_.d:403:    override hash_t getHash(in void* p) @trusted // TypeInfo_Pointer
+./src/rt/typeinfo/ti_char.d:27:    override hash_t getHash(in void* p)
+./src/rt/typeinfo/ti_ptr.d:25:    override hash_t getHash(in void* p)
+./src/rt/typeinfo/ti_dchar.d:27:    override hash_t getHash(in void* p)
+./src/rt/typeinfo/ti_byte.d:27:    override hash_t getHash(in void* p)
+./src/rt/typeinfo/ti_ushort.d:27:    override hash_t getHash(in void* p)
+./src/rt/typeinfo/ti_short.d:27:    override hash_t getHash(in void* p)
+./src/rt/typeinfo/ti_ubyte.d:27:    override hash_t getHash(in void* p) // includes bool
+./src/rt/typeinfo/ti_int.d:27:    override hash_t getHash(in void* p)
+./src/rt/typeinfo/ti_uint.d:27:    override hash_t getHash(in void* p)
+./src/rt/typeinfo/ti_float.d:48:    override hash_t getHash(in void* p)
+./src/rt/typeinfo/ti_wchar.d:27:    override hash_t getHash(in void* p)
+
+
+Calls hashOf for binary representation:
+
+./src/object_.d:453:    override hash_t getHash(in void* p) @trusted // TypeInfo_Array
+./src/rt/typeinfo/ti_Ashort.d:30:    override hash_t getHash(in void* p)
+./src/rt/typeinfo/ti_Adouble.d:30:    override hash_t getHash(in void* p)
+./src/rt/typeinfo/ti_Areal.d:30:    override hash_t getHash(in void* p)
+./src/rt/typeinfo/ti_Along.d:30:    override hash_t getHash(in void* p)
+./src/rt/typeinfo/ti_delegate.d:29:    override hash_t getHash(in void* p)
+./src/rt/typeinfo/ti_Acreal.d:30:    override hash_t getHash(in void* p)
+./src/rt/typeinfo/ti_Aint.d:30:    override hash_t getHash(in void* p)
+./src/rt/typeinfo/ti_Acfloat.d:30:    override hash_t getHash(in void* p)
+./src/rt/typeinfo/ti_ulong.d:29:    override hash_t getHash(in void* p)
+./src/rt/typeinfo/ti_Ag.d:31:    override hash_t getHash(in void* p) // byte[] (includes ubyte[], void[], bool[])
+./src/rt/typeinfo/ti_cfloat.d:51:    override hash_t getHash(in void* p)
+./src/rt/typeinfo/ti_Acdouble.d:30:    override hash_t getHash(in void* p)
+./src/rt/typeinfo/ti_creal.d:51:    override hash_t getHash(in void* p)
+./src/rt/typeinfo/ti_cdouble.d:51:    override hash_t getHash(in void* p)
+./src/rt/typeinfo/ti_real.d:50:    override hash_t getHash(in void* p)
+./src/rt/typeinfo/ti_Afloat.d:30:    override hash_t getHash(in void* p)
+./src/rt/typeinfo/ti_double.d:50:    override hash_t getHash(in void* p)
+./src/rt/typeinfo/ti_long.d:29:    override hash_t getHash(in void* p)
+
+
+Per-element hash:
+
+./src/object_.d:542:    override hash_t getHash(in void* p) @trusted // TypeInfo_StaticArray
+./src/rt/typeinfo/ti_AC.d:25:    override hash_t getHash(in void* p) // array of class?
+
+
+Calls toHash of type:
+
+./src/object_.d:767:    override hash_t getHash(in void* p) @trusted // TypeInfo_Class
+./src/object_.d:1189:    override hash_t getHash(in void *p) { return base.getHash(p); } // TypeInfo_Const (includes immutable, shared, inout)
+./src/rt/typeinfo/ti_C.d:25:    override hash_t getHash(in void* p)  // TypeInfo_C
+
+
+Custom:
+
+./src/object_.d:266:    hash_t getHash(in void* p) @trusted { return cast(hash_t)p; } // DEFAULT
+./src/object_.d:903:    override hash_t getHash(in void* p) @trusted // TypeInfo_Interface
+./src/object_.d:968:    override hash_t getHash(in void* p) @safe pure nothrow const // TypeInfo_Struct
+./src/rt/typeinfo/ti_Ag.d:165:    override hash_t getHash(in void* p) // char[] & string
+
+
+Aborts:
+
+./src/object_.d:1119:    override hash_t getHash(in void* p) // TypeInfo_Tuple
+./src/rt/typeinfo/ti_void.d:27:    override hash_t getHash(in void* p)
+
+
+To be looked at:
+
+./src/object_.d:333:    override hash_t getHash(in void* p) { return base.getHash(p); } // TypeInfo_Vector
+./src/object_.d:365:    override hash_t getHash(in void* p) { return base.getHash(p); } // TypeInfo_Typedef (includes TypeInfo_Enum)
