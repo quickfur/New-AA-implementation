@@ -410,8 +410,11 @@ public:
                 // match the current entry.
                 while (s)
                 {
-                    if (slot.key == s.key && slot.value == s.value)
+                    if (slot.hash == s.hash && slot.key == s.key &&
+                        slot.value == s.value)
+                    {
                         break;
+                    }
                     s = s.next;
                 }
 
