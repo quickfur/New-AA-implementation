@@ -1,3 +1,4 @@
+- MAJOR BUG: need to implement opIndexUnary() and opIndexAssign(string)().
 - Value types in opIndexAssign need to allow implicit conversions too!
 - BUG: AA!(immutable char[4],int) can't be instantiated.
 - Introduce toHash methods for all native types (via UFCS). This will solve the

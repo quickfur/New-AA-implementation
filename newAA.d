@@ -194,6 +194,51 @@ private:
         return slot;
     }
 
+    // Returns true if slot already exists; false otherwise.
+    bool findSlotLvalue(K)(K key, Value defaultValue, out Slot *slot) @trusted
+        if (keyCompat!K)
+    {
+        if (!impl)
+        {
+            impl = new Impl();
+            impl.slots = impl.binit;
+        }
+
+        auto keyhash = typeid(key).getHash(&key);
+        auto i = keyhash % impl.slots.length;
+        slot = impl.slots[i];
+
+        if (slot is null)
+        {
+            impl.slots[i] = new Slot(keyhash, key, defaultValue);
+            slot = impl.slots[i];
+        }
+        else
+        {
+            for(;;) {
+                if (slot.hash==keyhash && typeid(key).equals(&key, &slot.key))
+                {
+                    return true;
+                }
+                else if (!slot.next)
+                {
+                    slot.next = new Slot(keyhash, key, defaultValue);
+                    slot = slot.next;
+                    break;
+                }
+
+                slot = slot.next;
+            }
+        }
+
+        if (++impl.nodes > 4*impl.slots.length)
+        {
+            this.rehash;
+        }
+
+        return false;
+    }
+
 public:
     static typeof(this) fromLiteral(Key[] keys, Value[] values) @safe
     in { assert(keys.length == values.length); }
@@ -277,46 +322,29 @@ public:
         return *valp;
     }
 
-    void opIndexAssign(K)(Value value, K key) @trusted /*pure nothrow*/
+    void opIndexAssign(K)(Value value, K key) @safe /*pure nothrow*/
         // Why isn't getHash() pure?!
         if (keyCompat!K)
     {
-        if (!impl)
-        {
-            impl = new Impl();
-            impl.slots = impl.binit;
-        }
+        Slot *slot;
+        if (findSlotLvalue(key, value, slot))
+            slot.value = value;
+    }
 
-        auto keyhash = typeid(key).getHash(&key);
-        auto i = keyhash % impl.slots.length;
-        Slot *slot = impl.slots[i];
+    Value opIndexUnary(string op, K)(K key) @safe
+        if (keyCompat!K)
+    {
+        Slot *slot;
+        findSlotLvalue(key, Value.init, slot);
+        return mixin(op ~ "slot.value");
+    }
 
-        if (slot is null)
-        {
-            impl.slots[i] = new Slot(keyhash, key, value);
-        }
-        else
-        {
-            for(;;) {
-                if (slot.hash==keyhash && typeid(key).equals(&key, &slot.key))
-                {
-                    slot.value = value;
-                    return;
-                }
-                else if (!slot.next)
-                {
-                    slot.next = new Slot(keyhash, key, value);
-                    break;
-                }
-
-                slot = slot.next;
-            }
-        }
-
-        if (++impl.nodes > 4*impl.slots.length)
-        {
-            this.rehash;
-        }
+    Value opIndexOpAssign(string op, K)(Value v, K key) @safe
+        if (keyCompat!K)
+    {
+        Slot *slot;
+        findSlotLvalue(key, Value.init, slot);
+        return mixin("slot.value" ~ op ~ "=v");
     }
 
     bool remove(K)(in K key) /*pure nothrow*/ @trusted
@@ -619,12 +647,32 @@ unittest {
     assert(("xyz"w in aa) is null);
 }
 
-// Test opIndexAssign and opIndex
+// Test opIndex*
 unittest {
+    // Test opIndex
     AA!(char,char) aa;
     aa['x'] = 'y';
     aa['y'] = 'z';
     assert(aa[aa['x']] == 'z');
+
+    // Test opIndexUnary
+    ++aa['x'];
+    assert(aa['x'] == 'z');
+    //aa['x']++;       // bug 7733
+
+    AA!(char,int) ii;
+    ii['a'] = 1;
+    ii['b'] = 2;
+    assert(-ii['a'] == -1);
+    assert(~ii['a'] == ~1);
+    assert(ii['a'] == 1);   // opIndexUnary should not change original value
+
+    // Test opIndexOpAssign
+    ii['b'] += 2;
+    assert(ii['b'] == 4);
+
+    ii['b'] -= 3;
+    assert(ii['b'] == 1);
 }
 
 // Test opApply.
@@ -889,6 +937,31 @@ unittest {
         }
         enum str = test();
     }
+}
+
+// Issue 3825
+unittest {
+    string[] words = ["how", "are", "you", "are"];
+
+    //int[string] aa1;
+    AA!(string,int) aa1;
+    foreach (w; words)
+        aa1[w] = ((w in aa1) ? (aa1[w] + 1) : 2);
+    //writeln(aa1); // Prints: [how:1,you:1,are:2] (bug)
+    assert(aa1["how"] == 2);
+    assert(aa1["are"] == 3);
+    assert(aa1["you"] == 2);
+
+    AA!(string,int) aa2;
+    foreach (w; words)
+        if (w in aa2)
+            ++aa2[w];
+        else
+            aa2[w] = 2;
+    //writeln(aa2); // Prints: [how:2,you:2,are:3] (correct result)
+    assert(aa1["how"] == 2);
+    assert(aa1["are"] == 3);
+    assert(aa1["you"] == 2);
 }
 
 // For development only. (Should this be made available for druntime
