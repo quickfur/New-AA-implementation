@@ -859,8 +859,8 @@ unittest {
     AA!(char[4],int) aa;
     aa[key1] = 123;
 
-    //__rawAAdump(aa);
-    //assert(aa["abcd"] == 123);
+    __rawAAdump(aa);
+    assert(aa["abcd"] == 123);
 }
 
 // Issue 5685
