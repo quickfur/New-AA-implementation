@@ -1,4 +1,3 @@
-- MAJOR BUG: need to implement opIndexUnary() and opIndexAssign(string)().
 - Value types in opIndexAssign need to allow implicit conversions too!
 - BUG: AA!(immutable char[4],int) can't be instantiated.
 - Introduce toHash methods for all native types (via UFCS). This will solve the
@@ -30,3 +29,4 @@
    + We may not have compiler support for syntactic sugar ATM, but that
      shouldn't stop us from implementing an interfacing function that can
      construct AA's that the compiler can hook into in the future.
++ MAJOR BUG: need to implement opIndexUnary() and opIndexOpAssign(string)().
