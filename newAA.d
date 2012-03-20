@@ -964,6 +964,13 @@ unittest {
     assert(aa1["you"] == 2);
 }
 
+// Issue 4463
+unittest {
+    AA!(int,double) aa;
+    ++aa[0];
+    assert(aa[0] != aa[0]);     // aa[0] should be NaN.
+}
+
 /*
  * Add toHash methods for basic types via UFCS, to provide uniform interface to
  * compute hashes for any type.
@@ -1062,6 +1069,12 @@ version(checkToHashWithGetHash)
                             double, real)();
         // Gotta love D variadic templates!!
     }
+}
+
+hash_t toHash(T)(T d) nothrow pure @trusted
+    if (!is(T U : U[]) && T.sizeof > int.sizeof)
+{
+    return hashOf(&d, d.sizeof);
 }
 
 
