@@ -1,4 +1,15 @@
+- IMPORTANT: current key implicit conversion is wrong. For example, if you have
+  double keys, then an int key converts to double, but will have drastically
+  different hash values. So there are really two cases we need to take care of:
+   - Qualifier conversion: immutable->const, etc.. This is where .idup and .dup
+     conversion is needed. This is the case Andrei wants.
+   - Integral type promotions: e.g., int->double, etc.. These SHOULD NOT BE IN
+     THE CODE. Let the input parameter always be Key (==double), and let the
+     compiler auto-promote int literals, and the like.
 - Value types in opIndexAssign need to allow implicit conversions too!
+   - Value conversions can be more liberal, because we don't need to compute
+     hash values. So anything that can be assigned to Value should be accepted.
+   - This should also include .dup and .idup convertibles.
 - BUG: AA!(immutable char[4],int) can't be instantiated.
 - Introduce toHash methods for all native types (via UFCS). This will solve the
   stupid purity/nothrow idiocies with the current TypeInfo.getHash.
