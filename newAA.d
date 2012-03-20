@@ -897,6 +897,13 @@ unittest {
     }
 }
 
+// Issue 4337 (probably same as 7512)
+unittest {
+    AA!(dstring,int) foo;
+    foo = AA!(dstring,int).fromLiteral(["hello"d], [5]);
+    assert("hello"d in foo);
+}
+
 // Issue 7632
 unittest {
     AA!(int,int) aa;
