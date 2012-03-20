@@ -873,6 +873,18 @@ unittest {
     assert(aa[j] == false);
 }
 
+// Test potential hash computation issue with const(char)[].
+unittest {
+    AA!(string,int) aa;
+    char[] key1 = "abcd".dup;
+    const(char)[] key2 = "abcd";
+    string key3 = "abcd";
+
+    aa[key3] = 123;
+    assert(aa[key2] == 123);
+    assert(aa[key1] == 123);
+}
+
 // Issues 7512 & 7704
 unittest {
     AA!(dstring,int) aa;
@@ -976,7 +988,7 @@ unittest {
  * compute hashes for any type.
  */
 hash_t toHash(T)(T[] s) nothrow pure @safe
-    if (is(T == char) || is(T == immutable(char)))
+    if (is(T == char) || is(T == const(char)) || is(T == immutable(char)))
 {
     // From TypeInfo_Aa
     hash_t hash = 0;
@@ -1009,7 +1021,12 @@ version(checkToHashWithGetHash)
         const(char)[] y = "abc";
         string z = "abc";
 
-        verifyHash(x,y,z);
+        // NOTE: we're deliberately breaking consistency with the existing
+        // getHash for const(char)[], because otherwise implicit key conversion
+        // of char[] and string to const(char)[] will cause hash values to be
+        // wrong.
+        //verifyHash(x,y,z);
+        verifyHash(x,z);
     }
 }
 
@@ -1038,9 +1055,12 @@ version(checkToHashWithGetHash)
 }
 
 hash_t toHash(T)(T[] s) nothrow pure @safe
-    if (!is(T == char) && !is(T == immutable(char)))
+    if (!is(T == char) && !is(T == const(char)) && !is(T == immutable(char)))
     // I've no idea why const(char)[] is treated differently from char[] and
-    // immutable(char)[], but that's the current behaviour of getHash.
+    // immutable(char)[], but that's the current behaviour of getHash. We
+    // deliberately break consistency here because otherwise implicit
+    // conversion of char[] and string to const(char)[] will cause hash values
+    // to be wrong.
 {
     // From TypeInfo_Array
     return hashOf(s.ptr, s.length * T.sizeof);
@@ -1049,11 +1069,6 @@ hash_t toHash(T)(T[] s) nothrow pure @safe
 version(checkToHashWithGetHash)
 {
     unittest {
-        // I've no idea why const(char)[] is treated differently from char[]
-        // and immutable(char)[], but that's the current behaviour.
-        const char[] s = "abc";
-        verifyHash(s);
-
         void checkNumericArrays(T, U...)() {
             T[] na = [1,2,3,4];
             const(T)[] cna = [1,2,3,4];
