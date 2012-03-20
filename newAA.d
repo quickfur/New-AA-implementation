@@ -938,8 +938,7 @@ unittest {
     AA!(int[2],string) aa;
     aa[foo] = "";
     assert(foo in aa);
-    //FIXME: this needs to work
-    //assert([1,2] in aa);
+    assert([1,2] in aa);
 }
 
 // Issue 7602
