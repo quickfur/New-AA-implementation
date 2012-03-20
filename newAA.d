@@ -9,6 +9,8 @@ version(AAdebug) {
 
 import core.exception;
 import core.memory;
+import rt.util.hash;
+
 
 // This is a temporary syntactic sugar hack until we manage to get dmd to
 // work with us nicely.
@@ -175,17 +177,17 @@ private:
         return slots;
     }
 
-    inout(Slot) *findSlot(K)(in K key) inout /*pure nothrow*/ @trusted
+    inout(Slot) *findSlot(K)(in K key) inout pure nothrow @safe
         if (keyComparable!K)
     {
         if (!impl)
             return null;
 
-        auto keyhash = typeid(key).getHash(&key);
+        auto keyhash = key.toHash();
         auto i = keyhash % impl.slots.length;
         inout(Slot)* slot = impl.slots[i];
         while (slot) {
-            if (slot.hash == keyhash && typeid(key).equals(&key, &slot.key))
+            if (slot.hash == keyhash && key == slot.key)
             {
                 return slot;
             }
@@ -204,7 +206,7 @@ private:
             impl.slots = impl.binit;
         }
 
-        auto keyhash = typeid(key).getHash(&key);
+        auto keyhash = key.toHash();
         auto i = keyhash % impl.slots.length;
         slot = impl.slots[i];
 
@@ -216,7 +218,7 @@ private:
         else
         {
             for(;;) {
-                if (slot.hash==keyhash && typeid(key).equals(&key, &slot.key))
+                if (slot.hash==keyhash && key==slot.key)
                 {
                     return true;
                 }
@@ -255,7 +257,7 @@ public:
         return aa;
     }
 
-    hash_t toHash() /*nothrow pure*/ const @trusted
+    hash_t toHash() nothrow pure const @trusted
     {
         // AA hashes must:
         // (1) depend solely on key/value pairs stored in it, regardless of the
@@ -278,11 +280,9 @@ public:
                 // NOTE: use a non-commutative operation (hashOf) to combine
                 // the key and value hashes to minimize collisions when dealing
                 // with things like int[int].
-                import rt.util.hash;
-
                 hash_t[2] pairhash;
                 pairhash[0] = s.hash;
-                pairhash[1] = typeid(Value).getHash(&s.value);
+                pairhash[1] = s.value.toHash();
 
                 h += hashOf(pairhash.ptr, pairhash.length * hash_t.sizeof);
 
@@ -297,14 +297,15 @@ public:
         return impl ? impl.nodes : 0;
     }
 
-    Value get(K)(in K key, lazy Value defaultValue) /*pure nothrow*/ const @safe
+    Value get(K)(in K key, lazy Value defaultValue) pure const @safe
         if (keyComparable!K)
     {
         auto s = findSlot(key);
         return (s is null) ? defaultValue : s.value;
     }
 
-    Value *opBinaryRight(string op, K)(in K key) /*pure*/ @trusted
+    inout(Value) *opBinaryRight(string op, K)(in K key)
+        nothrow pure inout @safe
         if (op=="in" && keyComparable!K)
     {
         auto slot = findSlot(key);
@@ -312,18 +313,18 @@ public:
     }
 
     Value opIndex(K)(in K key, string file=__FILE__, size_t line=__LINE__)
-        @safe /*pure*/
+        pure const @safe
         if (keyComparable!K)
     {
-        Value *valp = opBinaryRight!"in"(key);
+        const Value *valp = opBinaryRight!"in"(key);
         if (valp is null)
             throw new RangeError(file, line);
 
         return *valp;
     }
 
-    void opIndexAssign(K)(Value value, K key) @safe /*pure nothrow*/
-        // Why isn't getHash() pure?!
+    void opIndexAssign(K)(Value value, K key) @safe
+        // Note: can't be pure nothrow because we indirectly call alloc()
         if (keyCompat!K)
     {
         Slot *slot;
@@ -347,12 +348,12 @@ public:
         return mixin("slot.value" ~ op ~ "=v");
     }
 
-    bool remove(K)(in K key) /*pure nothrow*/ @trusted
+    bool remove(K)(in K key) pure nothrow @trusted
         if (keyCompat!K)
     {
         if (!impl) return false;
 
-        auto keyhash = typeid(key).getHash(&key);
+        auto keyhash = key.toHash();
         size_t i = keyhash % impl.slots.length;
         auto slot = impl.slots[i];
         if (!slot)
@@ -526,7 +527,7 @@ public:
         return this;
     }
 
-    @property auto dup() const /*nothrow pure*/ @safe
+    @property auto dup() const @safe
     {
         AssociativeArray!(Key,Value) result;
         if (impl !is null)
@@ -909,8 +910,7 @@ unittest {
     AA!(char[4],int) aa;
     aa[key1] = 123;
 
-    //__rawAAdump(aa);
-    //assert(aa["abcd"] == 123);
+    assert(aa["abcd"] == 123);
 }
 
 // Issue 5685
@@ -963,6 +963,107 @@ unittest {
     assert(aa1["are"] == 3);
     assert(aa1["you"] == 2);
 }
+
+/*
+ * Add toHash methods for basic types via UFCS, to provide uniform interface to
+ * compute hashes for any type.
+ */
+hash_t toHash(T)(T[] s) nothrow pure @safe
+    if (is(T == char) || is(T == immutable(char)))
+{
+    // From TypeInfo_Aa
+    hash_t hash = 0;
+    foreach (c; s)
+        hash = hash * 11 + c;
+    return hash;
+}
+
+// Ensure consistency with current TypeInfo.getHash(). Turn off
+// checkToHashWithGetHash once we get rid of getHash() from TypeInfo.
+version=checkToHashWithGetHash;
+version(checkToHashWithGetHash)
+{
+    version(unittest)
+    {
+        import std.string;
+
+        void verifyHash(string file=__FILE__, size_t line=__LINE__, T...)(T testvals)
+        {
+            foreach (testval; testvals)
+            {
+                assert(typeid(testval).getHash(&testval) == testval.toHash(),
+                       "toHash inconsistent with getHash in %s(%d)".format(file,line));
+            }
+        }
+    }
+
+    unittest {
+        char[] x = "abc".dup;
+        const(char)[] y = "abc";
+        string z = "abc";
+
+        verifyHash(x,y,z);
+    }
+}
+
+hash_t toHash(T)(in inout(T) c) nothrow pure @safe
+    if (is(T : char) || is(T : int))
+{
+    // From TypeInfo_a and TypeInfo_i
+    return c;
+}
+
+version(checkToHashWithGetHash)
+{
+    unittest {
+        char x = 'a';
+        const char cx = 'b';
+        immutable char ix = 'c';
+
+        verifyHash(x, cx, ix);
+
+        int y = 123;
+        const int cy = 234;
+        immutable int iy = 345;
+
+        verifyHash(y, cy, iy);
+    }
+}
+
+hash_t toHash(T)(T[] s) nothrow pure @safe
+    if (!is(T == char) && !is(T == immutable(char)))
+    // I've no idea why const(char)[] is treated differently from char[] and
+    // immutable(char)[], but that's the current behaviour of getHash.
+{
+    // From TypeInfo_Array
+    return hashOf(s.ptr, s.length * T.sizeof);
+}
+
+version(checkToHashWithGetHash)
+{
+    unittest {
+        // I've no idea why const(char)[] is treated differently from char[]
+        // and immutable(char)[], but that's the current behaviour.
+        const char[] s = "abc";
+        verifyHash(s);
+
+        void checkNumericArrays(T, U...)() {
+            T[] na = [1,2,3,4];
+            const(T)[] cna = [1,2,3,4];
+            immutable(T)[] ina = [1,2,3,4];
+
+            verifyHash(na, cna, ina);
+
+            // Buahaha template recursion
+            static if (U.length > 0)
+                checkNumericArrays!(U)();
+        }
+        checkNumericArrays!(byte, ubyte, short, ushort, int, uint, float,
+                            double, real)();
+        // Gotta love D variadic templates!!
+    }
+}
+
 
 // For development only. (Should this be made available for druntime
 // debugging?)
