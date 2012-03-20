@@ -983,6 +983,15 @@ unittest {
     assert(aa[0] != aa[0]);     // aa[0] should be NaN.
 }
 
+// Issue 5685
+unittest {
+    int[2] key = [1,2];
+    //string[int[2]] aa;
+    AA!(int[2],string) aa;
+    aa[key] = "";
+    assert([1,2] in aa);
+}
+
 /*
  * Add toHash methods for basic types via UFCS, to provide uniform interface to
  * compute hashes for any type.
