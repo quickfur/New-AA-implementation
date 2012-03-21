@@ -297,6 +297,11 @@ public:
         return impl ? impl.nodes : 0;
     }
 
+    @property bool empty() nothrow pure const @safe
+    {
+        return length == 0;
+    }
+
     Value get(K)(in K key, lazy Value defaultValue) pure const @safe
         if (keyComparable!K)
     {
@@ -627,6 +632,18 @@ unittest {
     assert(aa.length==3);
     aa.remove("def");
     assert(aa.length==2);
+}
+
+// Test .empty
+unittest {
+    AA!(wstring,int) aa;
+    assert(aa.empty);
+
+    aa["abc"w] = 123;
+    assert(!aa.empty);
+
+    aa.remove("abc"w);
+    assert(aa.empty);
 }
 
 // Test .get
