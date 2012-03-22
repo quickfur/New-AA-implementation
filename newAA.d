@@ -5,6 +5,17 @@ version=AAdebug;
 version(AAdebug) {
     import std.conv;
     import std.stdio;
+
+    static import std.traits;
+    template KeyType(V : V[K], K)
+    {
+        alias K KeyType;
+    }
+
+    template ValueType(V : V[K], K)
+    {
+        alias V ValueType;
+    }
 }
 
 import core.exception;
@@ -23,6 +34,12 @@ struct AssociativeArray(Key,Value)
 {
     alias Key keytype;
     alias Value valuetype;
+
+    // Temporary stuff that should be removed before merging into druntime.
+    version(AAdebug)
+    {
+        enum isAssociativeArray = true;
+    }
 
 private:
     // Convenience template to check if a given type can be compared with Key
@@ -258,6 +275,24 @@ public:
             aa[keys[i]] = values[i];
         }
         return aa;
+    }
+
+    version(AAdebug)
+    {
+        void opAssign(K,V)(V[K] aa)
+        {
+            foreach (key, val; aa)
+                this[key] = val;
+        }
+
+        void opAssign()(inout AssociativeArray!(Key,Value) aa) inout
+        {
+            // Stupid evil hack to get around const redtape.
+            // Can you believe what it takes to duplicate the default opAssign
+            // just because we need to overload it on a different source type?!
+            Impl **p = cast(Impl**)&impl;
+            *p = cast(Impl*)aa.impl;
+        }
     }
 
     hash_t toHash() nothrow pure const @trusted
@@ -1131,6 +1166,11 @@ hash_t toHash(T)(T d) nothrow pure @trusted
 // For development only. (Should this be made available for druntime
 // debugging?)
 version(AAdebug) {
+    unittest {
+        AA!(string,int) aa;
+        aa = ["abc":123];
+    }
+
     void __rawAAdump(K,V)(AssociativeArray!(K,V) aa)
     {
         writefln("Hash at %x (%d entries):",
