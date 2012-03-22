@@ -21,6 +21,9 @@ version(unittest)
 
 struct AssociativeArray(Key,Value)
 {
+    alias Key keytype;
+    alias Value valuetype;
+
 private:
     // Convenience template to check if a given type can be compared with Key
     // using ==.
