@@ -279,6 +279,12 @@ public:
 
     version(AAdebug)
     {
+        this(K,V)(V[K] aa)
+        {
+            foreach (key, val; aa)
+                this[key] = val;
+        }
+
         void opAssign(K,V)(V[K] aa)
         {
             foreach (key, val; aa)
@@ -1196,6 +1202,8 @@ version(AAdebug) {
     unittest {
         AA!(string,int) aa;
         aa = ["abc":123];
+
+        AA!(string,int) bb = cast()["abc":123];
     }
 
     void __rawAAdump(K,V)(AssociativeArray!(K,V) aa)
