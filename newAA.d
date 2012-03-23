@@ -1163,6 +1163,33 @@ hash_t toHash(T)(T d) nothrow pure @trusted
 }
 
 
+// Default hash function for structs
+hash_t toHash(S)(S s) nothrow pure @trusted
+    if (is(S == struct))
+{
+    return hashOf(&s, s.sizeof);
+}
+
+unittest {
+    // Check that struct keys are instantiable.
+    struct Bar {
+        int t;
+    }
+    AA!(Bar,int) aa;
+    assert(aa.length==0);
+
+    // Check that structs can override the default toHash
+    struct Foo {
+        hash_t toHash() nothrow pure @safe
+        {
+            return 1;
+        }
+    }
+    Foo x;
+    assert(x.toHash() == 1);
+}
+
+
 // For development only. (Should this be made available for druntime
 // debugging?)
 version(AAdebug) {
