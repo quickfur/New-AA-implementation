@@ -210,7 +210,10 @@ private:
         static if (keyEquiv!K || keySliceCompat!K)
             return key.toHash();
         else static if (is(K : Key))
-            return (cast(Key)key).toHash();
+        {
+            Key k = key;
+            return k.toHash();
+        }
         else
             static assert(0, "Don't know how to compute hash");
     }
