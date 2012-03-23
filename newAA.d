@@ -48,6 +48,13 @@ private:
 		enum bool keyComparable = is(typeof(Key.init==L.init) == bool);
 	}
 
+    // Check if a given type is equivalent to the key type (i.e., has the same
+    // representation, and presumably the same hash computation).
+    template keyEquiv(L) {
+        // The following works by making use of qualifier collapsing.
+        enum keyEquiv = is(immutable(Key)==immutable(L));
+    }
+
     // Convenience templates to check if a given type can be either implicitly
     // converted to Key, or can be converted via .idup. This is for supporting
     // assigning char[] keys to X[string], for example.
@@ -197,13 +204,24 @@ private:
         return slots;
     }
 
+    static hash_t hash(K)(K key) inout pure nothrow @safe
+        if (keyCompat!K)
+    {
+        static if (keyEquiv!K || keySliceCompat!K)
+            return key.toHash();
+        else static if (is(K : Key))
+            return (cast(Key)key).toHash();
+        else
+            static assert(0, "Don't know how to compute hash");
+    }
+
     inout(Slot) *findSlot(K)(in K key) inout pure nothrow @safe
-        if (keyComparable!K)
+        if (keyCompat!K)
     {
         if (!impl)
             return null;
 
-        auto keyhash = key.toHash();
+        auto keyhash = hash(key);
         auto i = keyhash % impl.slots.length;
         inout(Slot)* slot = impl.slots[i];
         while (slot) {
@@ -226,7 +244,7 @@ private:
             impl.slots = impl.binit;
         }
 
-        auto keyhash = key.toHash();
+        auto keyhash = hash(key);
         auto i = keyhash % impl.slots.length;
         slot = impl.slots[i];
 
@@ -347,7 +365,7 @@ public:
     }
 
     Value get(K)(in K key, lazy Value defaultValue) pure const @safe
-        if (keyComparable!K)
+        if (keyCompat!K)
     {
         auto s = findSlot(key);
         return (s is null) ? defaultValue : s.value;
@@ -355,7 +373,7 @@ public:
 
     inout(Value) *opBinaryRight(string op, K)(in K key)
         nothrow pure inout @safe
-        if (op=="in" && keyComparable!K)
+        if (op=="in" && keyCompat!K)
     {
         auto slot = findSlot(key);
         return (slot) ? &slot.value : null;
@@ -363,7 +381,7 @@ public:
 
     Value opIndex(K)(in K key, string file=__FILE__, size_t line=__LINE__)
         pure const @safe
-        if (keyComparable!K)
+        if (keyCompat!K)
     {
         const Value *valp = opBinaryRight!"in"(key);
         if (valp is null)
@@ -402,7 +420,7 @@ public:
     {
         if (!impl) return false;
 
-        auto keyhash = key.toHash();
+        auto keyhash = hash(key);
         size_t i = keyhash % impl.slots.length;
         auto slot = impl.slots[i];
         if (!slot)
@@ -944,6 +962,25 @@ unittest {
     aa[key3] = 123;
     assert(aa[key2] == 123);
     assert(aa[key1] == 123);
+}
+
+// Test implicit conversion of int to double
+unittest {
+    AA!(double,string) aa;
+    double x = 1.0;
+    int y = 1;
+    aa[x] = "a";
+    aa[y] = "b";
+    assert(aa[x] == "b");
+
+    const double cx = 1.0;
+    assert(aa[cx] == "b");
+
+    immutable int iy = 1;
+    assert(aa[iy] == "b");
+
+    // This should not compile:
+    //assert(aa["abc"]);
 }
 
 // Issues 7512 & 7704
