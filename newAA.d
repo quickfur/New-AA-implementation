@@ -98,7 +98,8 @@ private:
                 key = k.idup;
             else static if (keySliceCompat!K && is(Key b : b[N], int N))
             {
-                assert(k.length==N, "Tried to set key with wrong size in "
+                if (k.length!=N)
+                    throw new Error("Tried to set key with wrong size in " ~
                                     "associative array with fixed-size key");
                 key = k[0..N];
             }
