@@ -62,10 +62,7 @@ private:
     // converted to Key, or can be converted via .idup. This is for supporting
     // assigning char[] keys to X[string], for example.
     template keyIdupCompat(L) {
-        static if (__traits(compiles, L.init.idup))
-            enum keyIdupCompat = is(typeof(L.init.idup) : Key);
-        else
-            enum keyIdupCompat = false;
+        enum keyIdupCompat = is(typeof(L.init.idup) : Key);
     }
     template keySliceCompat(L) {
         // Issue 7665: allow dynamic array assignment to static array keys.
