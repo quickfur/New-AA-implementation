@@ -30,7 +30,43 @@ import rt.util.hash;
 // work with us nicely.
 version(unittest)
 {
-    alias AssociativeArray AA;
+    template AA(T)
+        if (std.traits.isAssociativeArray!T)
+    {
+        alias AssociativeArray!(GetTypesTuple!T) AA;
+    }
+
+    import std.typetuple;
+
+    template GetTypesTuple(T)
+        if (std.traits.isAssociativeArray!T)
+    {
+        static if (std.traits.isAssociativeArray!(ValueType!T))
+        {                                                      
+            static if (std.traits.isAssociativeArray!(KeyType!T))
+                alias TypeTuple!(AssociativeArray!(GetTypeTuple!(KeyType!T)),
+                                 AssociativeArray!(GetTypesTuple!(ValueType!T)))
+                      GetTypesTuple;
+            else
+                alias TypeTuple!(KeyType!T,
+                                 AssociativeArray!(GetTypesTuple!(ValueType!T)))
+                      GetTypesTuple;
+        }
+        else
+        {
+            static if (std.traits.isAssociativeArray!(KeyType!T))
+                alias TypeTuple!(AssociativeArray!(GetTypesTuple!(KeyType!T)),
+                                 ValueType!T)
+                      GetTypesTuple;
+            else
+                alias TypeTuple!(KeyType!T, ValueType!T) GetTypesTuple;
+        }
+    }
+
+    unittest {
+        AA!(int[string]) aa;
+        assert(typeid(aa) == typeid(AssociativeArray!(string,int)));
+    }
 }
 
 struct AssociativeArray(Key,Value)
@@ -697,7 +733,7 @@ public:
 
 // Test reference semantics
 unittest {
-    AA!(string,int) aa, bb;
+    AA!(int[string]) aa, bb;
     aa["abc"] = 123;
     bb = aa;
     assert(aa.impl is bb.impl);
@@ -711,7 +747,7 @@ unittest {
 
 // Check consistency with specs
 unittest {
-    AA!(string,int) aa;
+    AA!(int[string]) aa;
     assert(aa.sizeof==4 || aa.sizeof==8);
     assert(aa.length==0);
 
@@ -727,7 +763,7 @@ unittest {
 
 // Test .empty
 unittest {
-    AA!(wstring,int) aa;
+    AA!(int[wstring]) aa;
     assert(aa.empty);
 
     aa["abc"w] = 123;
@@ -739,7 +775,7 @@ unittest {
 
 // Test .get
 unittest {
-    AA!(dstring,int) aa;
+    AA!(int[dstring]) aa;
     aa["mykey"d] = 10;
 
     assert(aa.get("mykey"d, 99) == 10);
@@ -748,7 +784,7 @@ unittest {
 
 // Test opBinaryRight!"in"
 unittest {
-    AA!(wstring,bool) aa;
+    AA!(bool[wstring]) aa;
     aa["abc"w] = true;
     aa["def"w] = false;
 
@@ -759,7 +795,7 @@ unittest {
 // Test opIndex*
 unittest {
     // Test opIndex
-    AA!(char,char) aa;
+    AA!(char[char]) aa;
     aa['x'] = 'y';
     aa['y'] = 'z';
     assert(aa[aa['x']] == 'z');
@@ -769,7 +805,7 @@ unittest {
     assert(aa['x'] == 'z');
     //aa['x']++;       // bug 7733
 
-    AA!(char,int) ii;
+    AA!(int[char]) ii;
     ii['a'] = 1;
     ii['b'] = 2;
     assert(-ii['a'] == -1);
@@ -786,7 +822,7 @@ unittest {
 
 // Test opApply.
 unittest {
-    AA!(int,int) aa;
+    AA!(int[int]) aa;
     aa[10] = 5;
     aa[20] = 17;
     aa[30] = 39;
@@ -812,7 +848,7 @@ unittest {
     immutable int[] key1 = [1,2,3];
     immutable int[] key2 = [4,5,6];
     immutable int[] key3 = [1,3,5];
-    AA!(immutable int[], char) aa, bb;
+    AA!(char[immutable int[]]) aa, bb;
     aa[key1] = '1';
     aa[key2] = '2';
     aa[key3] = '3';
@@ -830,7 +866,7 @@ unittest {
 
 // Test .keys and .values
 unittest {
-    AA!(char,int) aa;
+    AA!(int[char]) aa;
     aa['a'] = 1;
     aa['b'] = 2;
     aa['c'] = 3;
@@ -841,7 +877,7 @@ unittest {
 
 // Test .rehash
 unittest {
-    AA!(int,int) aa;
+    AA!(int[int]) aa;
     foreach (i; 0 .. 99) {
         aa[i*10] = i^^2;
     }
@@ -853,7 +889,7 @@ unittest {
 
 // Test .byKey and .byValue
 unittest {
-    AA!(int,string) aa;
+    AA!(string[int]) aa;
     aa[100] = "a";
     aa[200] = "aa";
     aa[300] = "aaaa";
@@ -872,7 +908,7 @@ unittest {
 
 // Test implicit conversion (feature requested by Andrei)
 unittest {
-    AA!(wstring,int) aa;
+    AA!(int[wstring]) aa;
     wchar[] key = "abc"w.dup;
     aa[key] = 123;
 
@@ -893,7 +929,7 @@ unittest {
     const int[] key3 = [3,1,2];
     const int[] key4 = [1,3,2];
 
-    AA!(const int[],string) aa;
+    AA!(string[const int[]]) aa;
     aa[key1] = "abc";
     aa[key2] = "def";
     aa[key3] = "ghi";
@@ -917,7 +953,7 @@ unittest {
 
 // Test .toHash
 unittest {
-    AA!(int,int) aa1, aa2, aa3;
+    AA!(int[int]) aa1, aa2, aa3;
 
     aa1[1] = 2;
     aa1[2] = 1;
@@ -933,7 +969,8 @@ unittest {
     assert(aa1.toHash() == aa3.toHash());
 
     // Issue 3824
-    AA!(const AA!(int,int), string) meta;
+    //AA!(const AA!(int,int), string) meta;
+    AA!(string[const AA!(int[int])]) meta;
     meta[aa1] = "abc";
     assert(meta[aa3] == "abc");
 
@@ -946,12 +983,12 @@ unittest {
 
 // Test AA literals API
 unittest {
-    auto aa = AA!(string,int).fromLiteral(
+    auto aa = AA!(int[string]).fromLiteral(
         ["abc", "def", "ghi"],
         [ 123,   456,   789 ]
     );
 
-    AA!(string,int) bb;
+    AA!(int[string]) bb;
     bb["abc"] = 123;
     bb["def"] = 456;
     bb["ghi"] = 789;
@@ -961,7 +998,7 @@ unittest {
 
 // Test .dup with a large AA
 unittest {
-    AA!(int,short) aa;
+    AA!(short[int]) aa;
     foreach (short i; 0..100)
         aa[i*100] = i;
 
@@ -970,7 +1007,7 @@ unittest {
 
 // Test non-const key type (by Andrei's request)
 unittest {
-    AA!(int,bool) aa;
+    AA!(bool[int]) aa;
     aa[123] = true;
     aa[321] = false;
 
@@ -983,7 +1020,7 @@ unittest {
 
 // Test potential hash computation issue with const(char)[].
 unittest {
-    AA!(string,int) aa;
+    AA!(int[string]) aa;
     char[] key1 = "abcd".dup;
     const(char)[] key2 = "abcd";
     string key3 = "abcd";
@@ -995,7 +1032,7 @@ unittest {
 
 // Bug found by Andrej Mitrovic: can't instantiate AA!(string,int[]).
 unittest {
-    AA!(string,int[]) aa;
+    AA!(int[][string]) aa;
     aa["abc"] = [1,2,3];
     assert(aa["abc"] == [1,2,3]);
 
@@ -1008,7 +1045,7 @@ unittest {
 
 // Test implicit conversion of int to double
 unittest {
-    AA!(double,string) aa;
+    AA!(string[double]) aa;
     double x = 1.0;
     int y = 1;
     aa[x] = "a";
@@ -1027,12 +1064,12 @@ unittest {
 
 // Test AA value types
 unittest {
-    AA!(int, AA!(int,int)) aa;
+    AA!(int[int][int]) aa;
 }
 
 // Issues 7512 & 7704
 unittest {
-    AA!(dstring,int) aa;
+    AA!(int[dstring]) aa;
     aa["abc"d] = 123;
     aa["def"d] = 456;
     aa["ghi"d] = 789;
@@ -1044,14 +1081,14 @@ unittest {
 
 // Issues 4337 & 7512
 unittest {
-    AA!(dstring,int) foo;
-    foo = AA!(dstring,int).fromLiteral(["hello"d], [5]);
+    AA!(int[dstring]) foo;
+    foo = AA!(int[dstring]).fromLiteral(["hello"d], [5]);
     assert("hello"d in foo);
 }
 
 // Issue 7632
 unittest {
-    AA!(int,int) aa;
+    AA!(int[int]) aa;
     foreach (idx; 0 .. 10) {
         aa[idx] = idx*2;
     }
@@ -1063,7 +1100,7 @@ unittest {
 
 // Issue 6210
 unittest {
-    AA!(string,int) aa;
+    AA!(int[string]) aa;
     aa["h"] = 1;
     assert(aa == aa.dup);
 }
@@ -1071,7 +1108,7 @@ unittest {
 // Issue 7665
 unittest {
     char[] key1 = "abcd".dup;
-    AA!(char[4],int) aa;
+    AA!(int[char[4]]) aa;
     aa[key1] = 123;
 
     assert(aa["abcd"] == 123);
@@ -1080,7 +1117,7 @@ unittest {
 // Issue 5685
 unittest {
     int[2] foo = [1,2];
-    AA!(int[2],string) aa;
+    AA!(string[int[2]]) aa;
     aa[foo] = "";
     assert(foo in aa);
     assert([1,2] in aa);
@@ -1107,7 +1144,7 @@ unittest {
     string[] words = ["how", "are", "you", "are"];
 
     //int[string] aa1;
-    AA!(string,int) aa1;
+    AA!(int[string]) aa1;
     foreach (w; words)
         aa1[w] = ((w in aa1) ? (aa1[w] + 1) : 2);
     //writeln(aa1); // Prints: [how:1,you:1,are:2] (bug)
@@ -1115,7 +1152,7 @@ unittest {
     assert(aa1["are"] == 3);
     assert(aa1["you"] == 2);
 
-    AA!(string,int) aa2;
+    AA!(int[string]) aa2;
     foreach (w; words)
         if (w in aa2)
             ++aa2[w];
@@ -1129,7 +1166,7 @@ unittest {
 
 // Issue 4463
 unittest {
-    AA!(int,double) aa;
+    AA!(double[int]) aa;
     ++aa[0];
     assert(aa[0] != aa[0]);     // aa[0] should be NaN.
 }
@@ -1137,8 +1174,7 @@ unittest {
 // Issue 5685
 unittest {
     int[2] key = [1,2];
-    //string[int[2]] aa;
-    AA!(int[2],string) aa;
+    AA!(string[int[2]]) aa;
     aa[key] = "";
     assert([1,2] in aa);
 }
@@ -1265,7 +1301,7 @@ unittest {
     struct Bar {
         int t;
     }
-    AA!(Bar,int) aa;
+    AA!(int[Bar]) aa;
     assert(aa.length==0);
 
     // Check that structs can override the default toHash
@@ -1284,10 +1320,10 @@ unittest {
 // debugging?)
 version(AAdebug) {
     unittest {
-        AA!(string,int) aa;
+        AA!(int[string]) aa;
         aa = ["abc":123];
 
-        AA!(string,int) bb = cast()["abc":123];
+        AA!(int[string]) bb = cast()["abc":123];
     }
 
     void __rawAAdump(K,V)(AssociativeArray!(K,V) aa)
