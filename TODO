@@ -1,3 +1,6 @@
+- Add "catchall" methods for signature-constrained methods which just contain a
+  static assert to tell the user what's wrong (instead of letting the compiler
+  flood with a ton of errors).
 - IMPORTANT: current key implicit conversion is wrong. For example, if you have
   double keys, then an int key converts to double, but will have drastically
   different hash values. So there are really two cases we need to take care of:

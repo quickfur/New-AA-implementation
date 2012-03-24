@@ -1,6 +1,9 @@
 // vim:set ts=4 sw=4 expandtab:
 // Developmental version of completely native AA implementation.
 
+// Bug workarounds :-(
+version=issue7757;
+
 version=AAdebug;
 version(AAdebug) {
     import std.conv;
@@ -346,11 +349,36 @@ public:
         return length == 0;
     }
 
-    Value get(K)(in K key, lazy Value defaultValue) pure const @safe
-        if (keyComparable!K)
-    {
-        auto s = findSlot(key);
-        return (s is null) ? defaultValue : s.value;
+    version(issue7757) {
+        // Due to compiler bug 7757, it's impossible to put inout on a lazy
+        // parameter, so we have to duplicate code. :-(
+        Value get(K)(in K key, lazy Value defaultValue) pure @safe
+            if (keyComparable!K)
+        {
+            Slot* s = findSlot(key);
+            return (s is null) ? defaultValue : s.value;
+        }
+
+        const(Value) get(K)(in K key, lazy const(Value) defaultValue) const pure @safe
+            if (keyComparable!K)
+        {
+            const(Slot)* s = findSlot(key);
+            return (s is null) ? defaultValue : s.value;
+        }
+
+        immutable(Value) get(K)(in K key, lazy immutable(Value) defaultValue) immutable pure @safe
+            if (keyComparable!K)
+        {
+            immutable(Slot)* s = findSlot(key);
+            return (s is null) ? defaultValue : s.value;
+        }
+    } else {
+        inout(Value) get(K)(in K key, lazy inout(Value) defaultValue) inout pure @safe
+            if (keyComparable!K)
+        {
+            inout(Slot)* s = findSlot(key);
+            return (s is null) ? defaultValue : s.value;
+        }
     }
 
     inout(Value) *opBinaryRight(string op, K)(in K key)
@@ -361,11 +389,11 @@ public:
         return (slot) ? &slot.value : null;
     }
 
-    Value opIndex(K)(in K key, string file=__FILE__, size_t line=__LINE__)
-        pure const @safe
+    inout(Value) opIndex(K)(in K key, string file=__FILE__, size_t line=__LINE__)
+        pure inout @safe
         if (keyComparable!K)
     {
-        const Value *valp = opBinaryRight!"in"(key);
+        inout(Value) *valp = opBinaryRight!"in"(key);
         if (valp is null)
             throw new RangeError(file, line);
 
@@ -576,7 +604,7 @@ public:
         return this;
     }
 
-    @property auto dup() const @safe
+    @property auto dup() @safe
     {
         AssociativeArray!(Key,Value) result;
         if (impl !is null)
@@ -584,7 +612,7 @@ public:
             result.impl = new Impl();
             result.impl.slots = alloc(findAllocSize(impl.nodes));
 
-            foreach (const(Slot)* slot; impl.slots)
+            foreach (Slot* slot; impl.slots)
             {
                 while (slot)
                 {
@@ -944,6 +972,19 @@ unittest {
     aa[key3] = 123;
     assert(aa[key2] == 123);
     assert(aa[key1] == 123);
+}
+
+// Bug found by Andrej Mitrovic: can't instantiate AA!(string,int[]).
+unittest {
+    AA!(string,int[]) aa;
+    aa["abc"] = [1,2,3];
+    assert(aa["abc"] == [1,2,3]);
+
+    assert(aa.get("abc", [0]) == [1,2,3]);
+    assert(aa.get("def", [0]) == [0]);
+
+    assert(("abc" in aa) !is null);
+    assert(("def" in aa) is null);
 }
 
 // Issues 7512 & 7704
