@@ -316,7 +316,7 @@ public:
                 this[key] = val;
         }
 
-        void opAssign()(inout AssociativeArray!(Key,Value) aa) inout
+        void opAssign()(inout AssociativeArray!(Key,Value) aa) inout @trusted
         {
             // Stupid evil hack to get around const redtape.
             // Can you believe what it takes to duplicate the default opAssign
@@ -1026,6 +1026,11 @@ unittest {
 
     // This should not compile:
     //assert(aa["abc"]);
+}
+
+// Test AA value types
+unittest {
+    AA!(int, AA!(int,int)) aa;
 }
 
 // Issues 7512 & 7704

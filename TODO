@@ -1,3 +1,5 @@
+- Reintroduce const to .dup: this probably requires that we handle generic
+  value types as well (we may need to .idup stuff to copy them, etc.).
 - Add "catchall" methods for signature-constrained methods which just contain a
   static assert to tell the user what's wrong (instead of letting the compiler
   flood with a ton of errors).
