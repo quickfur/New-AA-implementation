@@ -9,7 +9,19 @@ version(AAdebug) {
     import std.conv;
     import std.stdio;
 
-    static import std.traits;
+    template isAA(T)
+    {
+        static if (__traits(isAssociativeArray, T))
+        {
+            static if (is(T _ : V[K], K, V))
+                enum isAA = true;
+            else
+                static assert(0);
+        }
+        else
+            enum isAA = false;
+    }
+
     template KeyType(V : V[K], K)
     {
         alias K KeyType;
@@ -30,37 +42,16 @@ import rt.util.hash;
 // work with us nicely.
 version(unittest)
 {
-    template AA(T)
-        if (std.traits.isAssociativeArray!T)
+    template AA(T) if (isAA!T)
     {
-        alias AssociativeArray!(GetTypesTuple!T) AA;
-    }
-
-    import std.typetuple;
-
-    template GetTypesTuple(T)
-        if (std.traits.isAssociativeArray!T)
-    {
-        static if (std.traits.isAssociativeArray!(ValueType!T))
-        {                                                      
-            static if (std.traits.isAssociativeArray!(KeyType!T))
-                alias TypeTuple!(AssociativeArray!(GetTypeTuple!(KeyType!T)),
-                                 AssociativeArray!(GetTypesTuple!(ValueType!T)))
-                      GetTypesTuple;
-            else
-                alias TypeTuple!(KeyType!T,
-                                 AssociativeArray!(GetTypesTuple!(ValueType!T)))
-                      GetTypesTuple;
-        }
-        else
+        template ToAA(T)
         {
-            static if (std.traits.isAssociativeArray!(KeyType!T))
-                alias TypeTuple!(AssociativeArray!(GetTypesTuple!(KeyType!T)),
-                                 ValueType!T)
-                      GetTypesTuple;
+            static if (isAA!T)
+                alias AssociativeArray!(ToAA!(KeyType!T), ToAA!(ValueType!T)) ToAA;
             else
-                alias TypeTuple!(KeyType!T, ValueType!T) GetTypesTuple;
+                alias T ToAA;
         }
+        alias ToAA!T AA;
     }
 
     unittest {
