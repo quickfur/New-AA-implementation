@@ -1,9 +1,6 @@
 // vim:set ts=4 sw=4 expandtab:
 // Developmental version of completely native AA implementation.
 
-// Bug workarounds :-(
-version=issue7757;
-
 version=AAdebug;
 version(AAdebug) {
     import std.conv;
@@ -395,36 +392,11 @@ public:
         return length == 0;
     }
 
-    version(issue7757) {
-        // Due to compiler bug 7757, it's impossible to put inout on a lazy
-        // parameter, so we have to duplicate code. :-(
-        Value get(K)(in K key, lazy Value defaultValue) pure @safe
-            if (keyCompat!K)
-        {
-            Slot* s = findSlot(key);
-            return (s is null) ? defaultValue : s.value;
-        }
-
-        const(Value) get(K)(in K key, lazy const(Value) defaultValue) const pure @safe
-            if (keyCompat!K)
-        {
-            const(Slot)* s = findSlot(key);
-            return (s is null) ? defaultValue : s.value;
-        }
-
-        immutable(Value) get(K)(in K key, lazy immutable(Value) defaultValue) immutable pure @safe
-            if (keyCompat!K)
-        {
-            immutable(Slot)* s = findSlot(key);
-            return (s is null) ? defaultValue : s.value;
-        }
-    } else {
-        inout(Value) get(K)(in K key, lazy inout(Value) defaultValue) inout pure @safe
-            if (keyCompat!K)
-        {
-            inout(Slot)* s = findSlot(key);
-            return (s is null) ? defaultValue : s.value;
-        }
+    inout(Value) get(K)(in K key, lazy inout(Value) defaultValue) inout pure @safe
+        if (keyCompat!K)
+    {
+        inout(Slot)* s = findSlot(key);
+        return (s is null) ? defaultValue : s.value;
     }
 
     inout(Value) *opBinaryRight(string op, K)(in K key)
