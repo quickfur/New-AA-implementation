@@ -198,8 +198,7 @@ private:
     Impl *impl;
 
     // Preset prime hash sizes for auto-rehashing.
-    // FIXME: this shouldn't be duplicated for every template instance.
-    static immutable size_t[] prime_list = [
+    enum size_t[] prime_list = [
                    31UL,
                    97UL,            389UL,
                 1_543UL,          6_151UL,
