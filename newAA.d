@@ -1088,18 +1088,12 @@ unittest {
 
 // Issue 7602
 unittest {
-    // Currently this code is untestable, because compiler magic with the name
-    // "AssociativeArray" causes keys()'s if(impl !is null) check to pass on a
-    // null pointer in CTFE.
-    version(none)
+    string[] test()
     {
-        string[] test()
-        {
-            AA!(string,int) aa;
-            return aa.keys;
-        }
-        enum str = test();
+        AA!(int[string]) aa;
+        return aa.keys;
     }
+    enum str = test();
 }
 
 // Issue 3825
